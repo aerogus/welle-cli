@@ -1,0 +1,5 @@
+# chemin de stockage de la captation
+REC_DIR=/path/to/data
+# Canal du multiplex à capter
+# Canaux DAB+ actifs à Paris: 5A, 6A, 6C, 6D, 8C, 9A, 9B, 11A, 11B
+CHANNEL=5A
