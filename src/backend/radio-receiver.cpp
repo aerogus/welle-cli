@@ -156,8 +156,7 @@ bool RadioReceiver::playProgramme(ProgrammeHandlerInterface& handler,
                     mscHandler.stopProcessing();
                 }
 
-                if (sc.audioType() == AudioServiceComponentType::DAB ||
-                    sc.audioType() == AudioServiceComponentType::DABPlus) {
+                if (sc.audioType() == AudioServiceComponentType::DABPlus) {
                     mscHandler.addSubchannel(
                             handler, sc.audioType(), dumpFileName, subch);
                     return true;
@@ -203,8 +202,7 @@ bool RadioReceiver::serviceHasAudioComponent(const Service& s) const
 {
     for (const auto& sc : getComponents(s)) {
         if (sc.transportMode() == TransportMode::Audio and
-                (sc.audioType() == AudioServiceComponentType::DAB or
-                 sc.audioType() == AudioServiceComponentType::DABPlus)) {
+                (sc.audioType() == AudioServiceComponentType::DABPlus)) {
             return true;
         }
     }

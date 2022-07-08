@@ -516,10 +516,7 @@ TransportMode ServiceComponent::transportMode() const
 
 AudioServiceComponentType ServiceComponent::audioType() const
 {
-    if (ASCTy == 0) {
-        return AudioServiceComponentType::DAB;
-    }
-    else if (ASCTy == 63) {
+    if (ASCTy == 63) {
         return AudioServiceComponentType::DABPlus;
     }
     else {

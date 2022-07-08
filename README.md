@@ -23,9 +23,9 @@ actuellement comportement modifié en dur
 -p [--pipe]
 
 - un répertoire de stockage par sid
-  - /home/rec/0xf00d/audio.wav
-  - /home/rec/0xf00d/dls.txt
-  - /home/rec/0xf00d/mot-timestamp.jpg|png
+  - /home/rec/0xf00d/0xf00d.wav
+  - /home/rec/0xf00d/0xf00d.txt
+  - /home/rec/0xf00d/0xf00d-content-name.jpg|png
 
 
 preprocess :
@@ -52,7 +52,6 @@ welle-cli:
 	/usr/local/opt/librtlsdr/lib/librtlsdr.0.dylib (compatibility version 0.0.0, current version 0.6.0)
 	/usr/local/opt/fftw/lib/libfftw3f.3.dylib (compatibility version 10.0.0, current version 10.10.0)
 	/usr/local/opt/faad2/lib/libfaad.2.dylib (compatibility version 3.0.0, current version 3.0.0)
-	/usr/local/opt/lame/lib/libmp3lame.0.dylib (compatibility version 1.0.0, current version 1.0.0)
 	/usr/local/opt/mpg123/lib/libmpg123.0.dylib (compatibility version 48.0.0, current version 48.0.0)
 	/usr/lib/libc++.1.dylib (compatibility version 1.0.0, current version 1300.23.0)
 	/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1311.100.3)
@@ -67,7 +66,6 @@ $ ldd welle-cli
 	libfftw3f.so.3 => /lib/aarch64-linux-gnu/libfftw3f.so.3 (0x0000007faed19000)
 	libfaad.so.2 => /lib/aarch64-linux-gnu/libfaad.so.2 (0x0000007faeccb000)
 	libasound.so.2 => /lib/aarch64-linux-gnu/libasound.so.2 (0x0000007faebbe000)
-	libmp3lame.so.0 => /lib/aarch64-linux-gnu/libmp3lame.so.0 (0x0000007faeb3e000)
 	libmpg123.so.0 => /lib/aarch64-linux-gnu/libmpg123.so.0 (0x0000007faeadd000)
 	libpthread.so.0 => /lib/aarch64-linux-gnu/libpthread.so.0 (0x0000007faeaac000)
 	libstdc++.so.6 => /lib/aarch64-linux-gnu/libstdc++.so.6 (0x0000007fae8d4000)

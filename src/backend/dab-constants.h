@@ -49,7 +49,7 @@ using DSPFLOAT = float;
 using DSPCOMPLEX = std::complex<DSPFLOAT>;
 using softbit_t = int8_t;
 
-enum class AudioServiceComponentType { DAB, DABPlus, Unknown };
+enum class AudioServiceComponentType { DABPlus, Unknown };
 
 enum class TransportMode { Audio, StreamData, FIDC, PacketData };
 

@@ -24,6 +24,24 @@ extern "C" {
 using namespace std;
 using namespace nlohmann;
 
+const std::string WHITESPACE = " \n\r\t\f\v";
+ 
+std::string ltrim(const std::string &s)
+{
+    size_t start = s.find_first_not_of(WHITESPACE);
+    return (start == std::string::npos) ? "" : s.substr(start);
+}
+
+std::string rtrim(const std::string &s)
+{
+    size_t end = s.find_last_not_of(WHITESPACE);
+    return (end == std::string::npos) ? "" : s.substr(0, end + 1);
+}
+ 
+std::string trim(const std::string &s) {
+    return rtrim(ltrim(s));
+}
+
 class WavProgrammeHandler: public ProgrammeHandlerInterface {
     public:
         WavProgrammeHandler(uint32_t SId, const std::string& fileprefix) :
@@ -72,8 +90,18 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface {
 
             ofstream myfile;
             string filename_dls = filePrefix + ".txt";
+            unsigned long int timestamp = time(NULL);
+
             myfile.open(filename_dls, std::ios_base::app);
-            myfile << "DYNAMIC_LABEL=" << label << endl;
+
+            json j;
+            j["dls"] = {
+                {"value", trim(label)},
+                {"ts", timestamp}
+            };
+            myfile << j << endl;
+
+            //myfile << "DYNAMIC_LABEL=" << label << endl;
             myfile.close();
         }
 
@@ -86,7 +114,7 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface {
                 extension = "png";
             }
 
-            ofstream file_mot_last, file_mot, file_txt, file_dls;
+            ofstream file_mot, file_txt;
             unsigned long int timestamp = time(NULL);
 
             uint32_t current_mot_size = mot_file.data.size();
@@ -96,33 +124,29 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface {
             }
             last_size = current_mot_size;
 
-            string filename_mot_last = filePrefix + "." + extension;
             string filename_mot = filePrefix + "-" + std::to_string(timestamp) + "." + extension;
-            string filename_txt = filePrefix + "-" + std::to_string(timestamp) + ".txt";
-            string filename_dls = filePrefix + ".txt";
+            string filename_txt = filePrefix + ".txt";
+            file_txt.open(filename_txt, std::ios_base::app);
+
+            json j;
+            j["mot"] = {
+                {"file", filename_mot.substr(filename_mot.find_last_of("/\\") + 1)},
+                {"content_name", mot_file.content_name},
+                {"click_through_url", mot_file.click_through_url},
+                {"category_title", mot_file.category_title},
+                {"ts", timestamp}
+            };
+
+            file_txt << j << endl;
+            file_txt.close();
 
             file_mot.open(filename_mot);
-            file_mot_last.open(filename_mot_last);
-            file_txt.open(filename_txt);
-            file_dls.open(filename_dls, std::ios_base::app);
-
-            file_txt << "content_name=" << mot_file.content_name << endl;
-            file_txt << "click_through_url=" << mot_file.click_through_url << endl;
-            file_txt << "category_title=" << mot_file.category_title << endl;
-
             std::stringstream ss;
             for (auto it = mot_file.data.begin(); it != mot_file.data.end(); it++)    {
                 ss << *it;
             }
             file_mot << ss.str();
-            file_mot_last << ss.str();
-
-            file_dls << "MOT=" << filename_mot << endl;
-
-            file_mot_last.close();
             file_mot.close();
-            file_txt.close();
-            file_dls.close();
 
             cout << "[0x" << std::hex << SId << std::dec << "] MOT reçu " << endl;
         }
@@ -143,7 +167,22 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface {
 
 class RadioInterface : public RadioControllerInterface {
     public:
-        virtual void onSNR(float /*snr*/) override { }
+        // rapport signal sur bruit
+        virtual void onSNR(float snr) override {
+            unsigned long int timestamp = time(NULL);
+            json j;
+
+            j["snr"] = {
+                {"ts", timestamp},
+                {"value", snr}
+            };
+
+            if (last_snr != j) {
+                cout << j << endl;
+                last_snr = j;
+            }
+
+        }
         virtual void onFrequencyCorrectorChange(int /*fine*/, int /*coarse*/) override { }
         virtual void onSyncChange(char isSync) override { synced = isSync; }
         virtual void onSignalPresence(bool /*isSignal*/) override { }
@@ -155,13 +194,13 @@ class RadioInterface : public RadioControllerInterface {
 
         virtual void onNewEnsemble(uint16_t eId) override
         {
-            cout << "Ensemble name id: " << hex << eId << dec << endl;
+            //cout << "Ensemble name id: " << hex << eId << dec << endl;
             ensembleId = eId;
         }
 
         virtual void onSetEnsembleLabel(DabLabel& label) override
         {
-            cout << "Ensemble label: " << label.utf8_label() << endl;
+            //cout << "Ensemble label: " << label.utf8_label() << endl;
             ensembleLabel = label.utf8_label();
         }
 
@@ -178,32 +217,12 @@ class RadioInterface : public RadioControllerInterface {
             };
 
             if (last_date_time != j) {
-                cout << j << endl;
+                //cout << j << endl;
                 last_date_time = j;
             }
         }
 
-        virtual void onFIBDecodeSuccess(bool crcCheckOk, const uint8_t* fib) override {
-            if (fic_fd) {
-                if (not crcCheckOk) {
-                    return;
-                }
-
-                // convert bitvector to byte vector
-                vector<uint8_t> buf(32);
-                for (size_t i = 0; i < buf.size(); i++) {
-                    uint8_t v = 0;
-                    for (int j = 0; j < 8; j++) {
-                        if (fib[8*i+j]) {
-                            v |= 1 << (7-j);
-                        }
-                    }
-                    buf[i] = v;
-                }
-
-                fwrite(buf.data(), buf.size(), sizeof(buf[0]), fic_fd);
-            }
-        }
+        virtual void onFIBDecodeSuccess(bool crcCheckOk, const uint8_t* fib) override { }
         virtual void onNewImpulseResponse(std::vector<float>&& data) override { (void)data; }
         virtual void onNewNullSymbol(std::vector<DSPCOMPLEX>&& data) override { (void)data; }
         virtual void onConstellationPoints(std::vector<DSPCOMPLEX>&& data) override { (void)data; }
@@ -238,6 +257,7 @@ class RadioInterface : public RadioControllerInterface {
             cout << j << endl;
         }
 
+        json last_snr;
         json last_date_time;
         bool synced = false;
         FILE* fic_fd = nullptr;
@@ -326,13 +346,6 @@ int main(int argc, char **argv)
     string service_to_tune = options.programme;
 
     RadioReceiver rx(ri, *in, options.rro);
-    if (options.decode_all_programmes && options.fic_rec) {
-        FILE* fic_fd = fopen("dump.fic", "w");
-
-        if (fic_fd) {
-            ri.fic_fd = fic_fd;
-        }
-    }
 
     rx.restart(false);
 
@@ -355,13 +368,11 @@ int main(int argc, char **argv)
 
         cerr << "Service list" << endl;
         for (const auto& s : rx.getServiceList()) {
-            cerr << "  [0x" << std::hex << s.serviceId << std::dec << "] " <<
-                s.serviceLabel.utf8_label() << " ";
+            cerr << "  [0x" << std::hex << s.serviceId << std::dec << "] " << s.serviceLabel.utf8_label() << " ";
             for (const auto& sc : rx.getComponents(s)) {
                 cerr << " [component "  << sc.componentNr <<
                     " ASCTy: " <<
-                    (sc.audioType() == AudioServiceComponentType::DAB ? "DAB" :
-                        sc.audioType() == AudioServiceComponentType::DABPlus ? "DAB+" : "unknown") << " ]";
+                    (sc.audioType() == AudioServiceComponentType::DABPlus ? "DAB+" : "unknown") << " ]";
 
                 const auto& sub = rx.getSubchannel(sc);
                 cerr << " [subch " << sub.subChId << " bitrate:" << sub.bitrate() << " at SAd:" << sub.startAddr << "]";
@@ -382,10 +393,24 @@ int main(int argc, char **argv)
             ofstream myfile;
             string filename_sid = dumpFilePrefix + ".txt";
             myfile.open(filename_sid, std::ios_base::app);
-            myfile << "ENSEMBLE_ID=0x" << std::hex << ri.ensembleId << std::dec << endl;
-            myfile << "ENSEMBLE_LABEL=" << ri.ensembleLabel << endl;
-            myfile << "SERVICE_ID=0x" << std::hex << s.serviceId << std::dec << endl;
-            myfile << "SERVICE_LABEL=" << s.serviceLabel.utf8_label() << endl;
+            unsigned long int timestamp = time(NULL);
+
+            json je;
+            je["ensemble"] = {
+                {"emsembleId", ri.ensembleId},
+                {"ensembleLabel", trim(ri.ensembleLabel)},
+                {"ts", timestamp}
+            };
+            myfile << je << endl;
+
+            json js;
+            js["service"] = {
+                {"serviceId", s.serviceId},
+                {"serviceLabel", trim(s.serviceLabel.utf8_label())},
+                {"ts", timestamp}
+            };
+            myfile << js << endl;
+
             myfile.close();
 
             WavProgrammeHandler ph(s.serviceId, dumpFilePrefix);
@@ -408,12 +433,6 @@ int main(int argc, char **argv)
     }
     else {
         cerr << "Nothing to do, not ALSA support." << endl;
-    }
-
-    if (ri.fic_fd) {
-        FILE* fd = ri.fic_fd;
-        ri.fic_fd = nullptr;
-        fclose(fd);
     }
 
     return 0;

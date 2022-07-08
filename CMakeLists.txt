@@ -74,10 +74,6 @@ else()
     set(KISS_INCLUDE_DIRS "")
 endif()
 
-if(BUILD_WELLE_CLI)
-    find_package(Lame REQUIRED)
-endif()
-
 find_package(Threads REQUIRED)
 find_package(Faad REQUIRED)
 find_package(MPG123 REQUIRED)
@@ -88,12 +84,6 @@ endif()
 
 if (AIRSPY)
     find_package(LibAIRSPY REQUIRED)
-endif()
-
-if (SOAPYSDR)
-  find_package(SoapySDR NO_MODULE REQUIRED)
-  # Note: SoapySDRConfig.cmake sets C++11 standard so it needs to be reset to C++14
-  set(CMAKE_CXX_STANDARD 14)
 endif()
 
 include_directories(
@@ -132,7 +122,6 @@ set(backend_sources
     src/backend/tools.cpp
     src/backend/uep-protection.cpp
     src/backend/viterbi.cpp
-    src/various/Socket.cpp
     src/various/Xtan2.cpp
     src/various/channels.cpp
     src/various/fft.cpp
