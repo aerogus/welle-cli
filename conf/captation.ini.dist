@@ -1,5 +1,123 @@
-# chemin de stockage de la captation
-REC_DIR=/path/to/data
-# Canal du multiplex à capter
-# Canaux DAB+ actifs à Paris: 5A, 6A, 6C, 6D, 8C, 9A, 9B, 11A, 11B
-CHANNEL=5A
+# Chemin de stockage de la captation
+REC_DIR="/path/to/data"
+
+# Canal et service(s) du multiplex à capter
+# Services séparés par une virgule. si vide = tous les services du mux
+CHANNEL="5A"
+SERVICES="0xF00D,0xF00E"
+
+# Canaux DAB+ actifs à Paris - Juillet 2022:
+
+# Canal 5A: EXPE TDF TFL 5A
+#   0xF00D TEST DAB+ TFL
+#   0xF00E TEST2 DAB+ TFL
+
+# Canal 6A: PARIS 6A
+#   0xF229 Beur FM
+#   0xFEE8 CROONER RADIO
+#   0xFED6 FG CHIC
+#   0xF22D France Maghreb 2
+#   0xFEF3 HELLO PARIS
+#   0xF21C LATINA
+#   0xFEF2 MAXXIMUM
+#   0xF22B Radio Orient
+#   0xF21B SWIGG
+#   0xFEA3 Vivre FM
+
+# Canal 6C: towerCast-m1
+#   0xF2FE AirZen Radio
+#   0xF2F9 CHERIE FM
+#   0xF217 FUN RADIO
+#   0xF21C LATINA
+#   0xF225 M RADIO
+#   0xF2FA NOSTALGIE
+#   0xF2F8 NRJ
+#   0xF221 RADIO CLASSIQUE
+#   0xF226 RIRE ET CHANSONS
+#   0xF211 RTL
+#   0xF215 RTL2
+#   0xF214 SKYROCK
+#   0xF2FC SKYROCK KLASSIKS
+
+# Canal 6D: PARIS 6D
+#   0xFE93 AFRICA RADIO
+#   0xFED0 Antinea Radio
+#   0xFAB6 EURADIO+
+#   0xFE82 LOVELY
+#   0xFE53 MBS
+#   0xFEFC MCD
+#   0xFEEC MyZen radio
+#   0xFEE3 Phare FM
+#   0xFA84 RADIO BONHEUR
+#   0xF228 Radio Courtoisie
+#   0xF9F4 RADIO MARIAFR
+#   0xFE89 URBAN HIT
+#   0xF9FA Virage Radio
+
+# Canal 8C: towerCast-m2
+#   0xF227 BFM BUSINESS
+#   0xF2FD BFM RADIO
+#   0xF213 EUROPE 1
+#   0xF204 FIP
+#   0xF202 FRANCE CULTURE
+#   0xF206 FRANCE INFO
+#   0xF201 FRANCE INTER
+#   0xF203 FRANCE MUSIQUE
+#   0xF208 MOUV'
+#   0xF212 RFM
+#   0xF216 RMC
+#   0xF219 VIRGIN RADIO
+
+# Canal 9A: RNT Associative
+#   0xFE46 ALIGRE
+#   0xFED1 AYP
+#   0xFEE7 CAMPUS
+#   0xF9F1 CAPSAO
+#   0xFEF8 CAUSE COMMUNE
+#   0xFEFF FreqProtestante
+#   0xFED7 Frequence India (pas de diffusion)
+#   0xFEDB ICI & MAINTENANT
+#   0xFEEF MANDARIN
+#   0xF21A NEO
+#   0xF68C Radio TER (pas de diffusion)
+#   0xFEFE WRP
+
+# Canal 9B: PARIS 9B
+#   0xFEE0 AASMAN RADIO
+#   0xFEF5 AMI La Radio
+#   0xFEE5 CINEMUSIC Radio
+#   0xFEDC HopeRadio
+#   0xFEDF MEDI 1
+#   0xFEE4 PI-MG
+#   0xFEE6 Radio ALFA
+#   0xF8FE RADIO PITCHOUN
+#   0xFE86 SENSATIONS+
+#   0xF7FA TT NODE PARIS
+
+# Canal 11A: PARIS 11A
+#   0xFEE1 Collector
+#   0xF439 EMOTION
+#   0xFE41 ESPACE FM
+#   0xFECF Inrocks Radio
+#   0xFEE2 PANAME
+#   0xFEED Radio LiFE
+#   0xFEF0 Radio Monaco
+#   0xFEEE Sanef 107.7 IDF
+#   0xFEF7 SEQUENCE FM
+#   0xFEFA TRACE FM PARIS
+#   0xFE34 TROPIQUES FM
+
+# Canal 11B: Paris-Etendu
+#   0xF20A BLEU PARIS
+#   0xFE43 CHANTE FRANCE
+#   0xFE35 EVASION
+#   0xF22C FG
+#   0xFE50 GENERATIONS
+#   0xF22F J A Z Z Radio
+#   0xF9F5 Melody
+#   0xF22A NOVA
+#   0xF21D OUI FM
+#   0xFEFB Radio Notre-Dame
+#   0xF650 SUD RADIO
+#   0xF223 TSF JAZZ
+#   0xFE45 VOLTAGE

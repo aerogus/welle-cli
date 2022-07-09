@@ -39,6 +39,22 @@ std::string trim(const std::string &s) {
     return rtrim(ltrim(s));
 }
 
+// for string delimiter
+vector<string> split (string s, string delimiter) {
+    size_t pos_start = 0, pos_end, delim_len = delimiter.length();
+    string token;
+    vector<string> res;
+
+    while ((pos_end = s.find (delimiter, pos_start)) != string::npos) {
+        token = s.substr (pos_start, pos_end - pos_start);
+        pos_start = pos_end + delim_len;
+        res.push_back (token);
+    }
+
+    res.push_back (s.substr (pos_start));
+    return res;
+}
+
 class WavProgrammeHandler: public ProgrammeHandlerInterface {
     public:
         WavProgrammeHandler(uint32_t SId, const std::string& fileprefix) :
@@ -303,10 +319,9 @@ class RadioInterface : public RadioControllerInterface {
 };
 
 struct options_t {
-    /*string soapySDRDriverArgs = "";*/
     int gain = -1;
     string channel = "10B";
-    string iqsource = "";
+    vector<string> services;
     string programme = "GRRIF";
     string frontend = "auto";
     string frontend_args = "";
@@ -322,7 +337,7 @@ options_t parse_cmdline(int argc, char **argv)
     options.rro.decodeTII = false;
 
     int opt;
-    while ((opt = getopt(argc, argv, "c:o:g:p:u")) != -1) {
+    while ((opt = getopt(argc, argv, "c:o:g:s:u")) != -1) {
         switch (opt) {
             case 'c':
                 options.channel = optarg;
@@ -332,6 +347,9 @@ options_t parse_cmdline(int argc, char **argv)
                 break;
             case 'g':
                 options.gain = std::atoi(optarg);
+                break;
+            case 's':
+                options.services = split(optarg, ",");
                 break;
             case 'u':
                 options.rro.disableCoarseCorrector = true;
@@ -349,25 +367,25 @@ int main(int argc, char **argv)
 {
     auto options = parse_cmdline(argc, argv);
 
+    if (!options.services.empty()) {
+        // filtrage sur ces serviceIds
+        for (auto sid : options.services) cout << sid << endl;
+    }
+
     RadioInterface ri;
-
     Channels channels;
-
     unique_ptr<CVirtualInput> in = nullptr;
 
-    if (options.iqsource.empty()) {
-        in.reset(CInputFactory::GetDevice(ri, options.frontend));
+    in.reset(CInputFactory::GetDevice(ri, options.frontend));
 
-        if (not in) {
-            cerr << "Could not start device" << endl;
-            return 1;
-        }
+    if (not in) {
+        cerr << "Could not start device" << endl;
+        return 1;
     }
 
     if (options.gain == -1) {
         in->setAgc(true);
-    }
-    else {
+    } else {
         in->setGain(options.gain);
     }
 
@@ -396,8 +414,22 @@ int main(int argc, char **argv)
     map<SId_t, WavProgrammeHandler> phs;
 
     cerr << "Service list" << endl;
+    // boucle des services
     for (const auto& s : rx.getServiceList()) {
         cerr << "  [0x" << std::hex << s.serviceId << std::dec << "] " << s.serviceLabel.utf8_label() << " ";
+
+        std::stringstream sstream;
+        sstream << "0x" << std::setfill('0') << std::hex << s.serviceId;
+        string service_id = tolower(sstream.str());
+
+        if (options.services.empty() || std::find(options.services.begin(), options.services.end(), service_id) != options.services.end()) {
+            cout << "traitement de " << service_id << endl;
+        } else {
+            cout << "on ne traite pas " << service_id << endl;
+            continue;
+        }
+
+        // boucle des subchannels
         for (const auto& sc : rx.getComponents(s)) {
             cerr << " [component "  << sc.componentNr <<
                 " ASCTy: " <<
@@ -408,14 +440,9 @@ int main(int argc, char **argv)
         }
         cerr << endl;
 
-        std::stringstream stream;
-        stream << "0x" << std::setfill('0') << std::hex << s.serviceId;
         string dumpFilePrefix = options.dump_directory + "/" + stream.str();
-
         mkdir(dumpFilePrefix.c_str(), 0755);
-
         dumpFilePrefix += "/" + stream.str();
-
         dumpFilePrefix.erase(std::find_if(dumpFilePrefix.rbegin(), dumpFilePrefix.rend(),
                     [](int ch) { return !std::isspace(ch); }).base(), dumpFilePrefix.end());
 
