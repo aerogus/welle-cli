@@ -57,7 +57,11 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface {
         WavProgrammeHandler(WavProgrammeHandler&& other) = default;
         WavProgrammeHandler& operator=(WavProgrammeHandler&& other) = default;
 
-        virtual void onFrameErrors(int frameErrors) override { (void)frameErrors; }
+        virtual void onFrameErrors(int frameErrors) override
+        {
+            (void)frameErrors;
+        }
+
         virtual void onNewAudio(std::vector<int16_t>&& audioData, int sampleRate, const string& mode) override
         {
             if (rate != sampleRate) {
@@ -81,28 +85,34 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface {
             }
         }
 
-        virtual void onRsErrors(bool uncorrectedErrors, int numCorrectedErrors) override {
-            (void)uncorrectedErrors; (void)numCorrectedErrors; }
-        virtual void onAacErrors(int aacErrors) override { (void)aacErrors; }
+        virtual void onRsErrors(bool uncorrectedErrors, int numCorrectedErrors) override
+        {
+            (void)uncorrectedErrors; (void)numCorrectedErrors;
+        }
+
+        virtual void onAacErrors(int aacErrors) override
+        {
+            (void)aacErrors;
+        }
+
         virtual void onNewDynamicLabel(const std::string& label) override
         {
             cout << "[0x" << std::hex << SId << std::dec << "] " << "DLS: " << label << endl;
 
-            ofstream myfile;
-            string filename_dls = filePrefix + ".txt";
+            ofstream file_txt;
+            string filename_txt = filePrefix + ".txt";
             unsigned long int timestamp = time(NULL);
 
-            myfile.open(filename_dls, std::ios_base::app);
+            file_txt.open(filename_txt, std::ios_base::app);
 
             json j;
             j["dls"] = {
                 {"value", trim(label)},
                 {"ts", timestamp}
             };
-            myfile << j << endl;
+            file_txt << j << endl;
 
-            //myfile << "DYNAMIC_LABEL=" << label << endl;
-            myfile.close();
+            file_txt.close();
         }
 
         virtual void onMOT(const mot_file_t& mot_file) override
@@ -119,6 +129,7 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface {
 
             uint32_t current_mot_size = mot_file.data.size();
             if (current_mot_size == last_size) {
+                // détection de doublon par la taille du fichier
                 cout << "[0x" << std::hex << SId << std::dec << "] MOT BYPASS (doublon " << last_size << " octets)" << endl;
                 return;
             }
@@ -168,7 +179,8 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface {
 class RadioInterface : public RadioControllerInterface {
     public:
         // rapport signal sur bruit
-        virtual void onSNR(float snr) override {
+        virtual void onSNR(float snr) override
+        {
             unsigned long int timestamp = time(NULL);
             json j;
 
@@ -181,11 +193,21 @@ class RadioInterface : public RadioControllerInterface {
                 cout << j << endl;
                 last_snr = j;
             }
-
         }
-        virtual void onFrequencyCorrectorChange(int /*fine*/, int /*coarse*/) override { }
-        virtual void onSyncChange(char isSync) override { synced = isSync; }
-        virtual void onSignalPresence(bool /*isSignal*/) override { }
+
+        virtual void onFrequencyCorrectorChange(int /*fine*/, int /*coarse*/) override
+        {
+        }
+
+        virtual void onSyncChange(char isSync) override
+        {
+            synced = isSync;
+        }
+
+        virtual void onSignalPresence(bool /*isSignal*/) override
+        {
+        }
+
         virtual void onServiceDetected(uint32_t sId) override
         {
             cout << "New Service: 0x" << hex << sId << dec << endl;
@@ -222,10 +244,25 @@ class RadioInterface : public RadioControllerInterface {
             }
         }
 
-        virtual void onFIBDecodeSuccess(bool crcCheckOk, const uint8_t* fib) override { }
-        virtual void onNewImpulseResponse(std::vector<float>&& data) override { (void)data; }
-        virtual void onNewNullSymbol(std::vector<DSPCOMPLEX>&& data) override { (void)data; }
-        virtual void onConstellationPoints(std::vector<DSPCOMPLEX>&& data) override { (void)data; }
+        virtual void onFIBDecodeSuccess(bool crcCheckOk, const uint8_t* fib) override
+        {
+        }
+
+        virtual void onNewImpulseResponse(std::vector<float>&& data) override
+        {
+            (void)data;
+        }
+
+        virtual void onNewNullSymbol(std::vector<DSPCOMPLEX>&& data) override
+        {
+            (void)data;
+        }
+
+        virtual void onConstellationPoints(std::vector<DSPCOMPLEX>&& data) override
+        {
+            (void)data;
+        }
+
         virtual void onMessage(message_level_t level, const std::string& text, const std::string& text2 = std::string()) override
         {
             std::string fullText;
@@ -269,8 +306,7 @@ class RadioInterface : public RadioControllerInterface {
 };
 
 struct options_t {
-    string soapySDRDriverArgs = "";
-    string antenna = "";
+    /*string soapySDRDriverArgs = "";*/
     int gain = -1;
     string channel = "10B";
     string iqsource = "";
@@ -278,9 +314,6 @@ struct options_t {
     string frontend = "auto";
     string frontend_args = "";
     string dump_directory = "";
-    bool dump_programme = true;
-    bool decode_all_programmes = true;
-    bool fic_rec = false;
     list<int> tests;
 
     RadioReceiverOptions rro;
@@ -362,77 +395,72 @@ int main(int argc, char **argv)
     // Wait an additional 3 seconds so that the receiver can complete the service list
     this_thread::sleep_for(chrono::seconds(3));
 
-    if (options.decode_all_programmes) {
-        using SId_t = uint32_t;
-        map<SId_t, WavProgrammeHandler> phs;
+    using SId_t = uint32_t;
+    map<SId_t, WavProgrammeHandler> phs;
 
-        cerr << "Service list" << endl;
-        for (const auto& s : rx.getServiceList()) {
-            cerr << "  [0x" << std::hex << s.serviceId << std::dec << "] " << s.serviceLabel.utf8_label() << " ";
-            for (const auto& sc : rx.getComponents(s)) {
-                cerr << " [component "  << sc.componentNr <<
-                    " ASCTy: " <<
-                    (sc.audioType() == AudioServiceComponentType::DABPlus ? "DAB+" : "unknown") << " ]";
+    cerr << "Service list" << endl;
+    for (const auto& s : rx.getServiceList()) {
+        cerr << "  [0x" << std::hex << s.serviceId << std::dec << "] " << s.serviceLabel.utf8_label() << " ";
+        for (const auto& sc : rx.getComponents(s)) {
+            cerr << " [component "  << sc.componentNr <<
+                " ASCTy: " <<
+                (sc.audioType() == AudioServiceComponentType::DABPlus ? "DAB+" : "unknown") << " ]";
 
-                const auto& sub = rx.getSubchannel(sc);
-                cerr << " [subch " << sub.subChId << " bitrate:" << sub.bitrate() << " at SAd:" << sub.startAddr << "]";
-            }
-            cerr << endl;
-
-            std::stringstream stream;
-            stream << "0x" << std::setfill('0') << std::hex << s.serviceId;
-            string dumpFilePrefix = options.dump_directory + "/" + stream.str();
-
-            mkdir(dumpFilePrefix.c_str(), 0755);
-
-            dumpFilePrefix += "/" + stream.str();
-
-            dumpFilePrefix.erase(std::find_if(dumpFilePrefix.rbegin(), dumpFilePrefix.rend(),
-                        [](int ch) { return !std::isspace(ch); }).base(), dumpFilePrefix.end());
-
-            ofstream myfile;
-            string filename_sid = dumpFilePrefix + ".txt";
-            myfile.open(filename_sid, std::ios_base::app);
-            unsigned long int timestamp = time(NULL);
-
-            json je;
-            je["ensemble"] = {
-                {"emsembleId", ri.ensembleId},
-                {"ensembleLabel", trim(ri.ensembleLabel)},
-                {"ts", timestamp}
-            };
-            myfile << je << endl;
-
-            json js;
-            js["service"] = {
-                {"serviceId", s.serviceId},
-                {"serviceLabel", trim(s.serviceLabel.utf8_label())},
-                {"ts", timestamp}
-            };
-            myfile << js << endl;
-
-            myfile.close();
-
-            WavProgrammeHandler ph(s.serviceId, dumpFilePrefix);
-            phs.emplace(std::make_pair(s.serviceId, move(ph)));
-
-            auto dumpFileName = dumpFilePrefix + ".msc";
-
-            if (rx.addServiceToDecode(phs.at(s.serviceId), dumpFileName, s) == false) {
-                cerr << "Tune to " << service_to_tune << " failed" << endl;
-            }
+            const auto& sub = rx.getSubchannel(sc);
+            cerr << " [subch " << sub.subChId << " bitrate:" << sub.bitrate() << " at SAd:" << sub.startAddr << "]";
         }
+        cerr << endl;
 
-        while (true) {
-            cerr << "**** Enter '.' to quit." << endl;
-            cin >> service_to_tune;
-            if (service_to_tune == ".") {
-                break;
-            }
+        std::stringstream stream;
+        stream << "0x" << std::setfill('0') << std::hex << s.serviceId;
+        string dumpFilePrefix = options.dump_directory + "/" + stream.str();
+
+        mkdir(dumpFilePrefix.c_str(), 0755);
+
+        dumpFilePrefix += "/" + stream.str();
+
+        dumpFilePrefix.erase(std::find_if(dumpFilePrefix.rbegin(), dumpFilePrefix.rend(),
+                    [](int ch) { return !std::isspace(ch); }).base(), dumpFilePrefix.end());
+
+        ofstream file_txt;
+        string filename_sid = dumpFilePrefix + ".txt";
+        file_txt.open(filename_sid, std::ios_base::app);
+        unsigned long int timestamp = time(NULL);
+
+        json je;
+        je["ensemble"] = {
+            {"emsembleId", ri.ensembleId},
+            {"ensembleLabel", trim(ri.ensembleLabel)},
+            {"ts", timestamp}
+        };
+        file_txt << je << endl;
+
+        json js;
+        js["service"] = {
+            {"serviceId", s.serviceId},
+            {"serviceLabel", trim(s.serviceLabel.utf8_label())},
+            {"ts", timestamp}
+        };
+        file_txt << js << endl;
+
+        file_txt.close();
+
+        WavProgrammeHandler ph(s.serviceId, dumpFilePrefix);
+        phs.emplace(std::make_pair(s.serviceId, move(ph)));
+
+        auto dumpFileName = dumpFilePrefix + ".msc";
+
+        if (rx.addServiceToDecode(phs.at(s.serviceId), dumpFileName, s) == false) {
+            cerr << "Tune to " << service_to_tune << " failed" << endl;
         }
     }
-    else {
-        cerr << "Nothing to do, not ALSA support." << endl;
+
+    while (true) {
+        cerr << "**** Enter '.' to quit." << endl;
+        cin >> service_to_tune;
+        if (service_to_tune == ".") {
+            break;
+        }
     }
 
     return 0;
