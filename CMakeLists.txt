@@ -59,11 +59,6 @@ if(PROFILING)
     add_definitions(-DWITH_PROFILING)
 endif()
 
-find_package(ALSA)
-if(ALSA_FOUND)
-    add_definitions(-DHAVE_ALSA)
-endif()
-
 if(KISS_FFT)
     add_definitions(-DKISSFFT)
     set(fft_sources src/libs/kiss_fft/kiss_fft.c)
@@ -134,7 +129,6 @@ set(backend_sources
 
 set(welle_cli_sources
     src/welle-cli/welle-cli.cpp
-    src/welle-cli/alsa-output.cpp
 )
 
 set(input_sources
@@ -169,7 +163,6 @@ if(BUILD_WELLE_CLI)
       ${LIBAIRSPY_LIBRARIES}
       ${FFTW3F_LIBRARIES}
       ${FAAD_LIBRARIES}
-      ${ALSA_LIBRARIES}
       ${MPG123_LIBRARIES}
       Threads::Threads
     )

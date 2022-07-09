@@ -121,3 +121,9 @@ https://www.etsi.org/deliver/etsi_en/300400_300499/300401/02.01.01_60/en_300401v
 
 https://www.etsi.org/deliver/etsi_ts/101400_101499/101499/02.02.01_60/ts_101499v020201p.pdf
 
+
+## Démarrage captation
+
+Armer les captations
+
+systemctl start captation@NWB

@@ -10,9 +10,6 @@
 #include <utility>
 #include <cstdio>
 #include <unistd.h>
-#if defined(HAVE_ALSA)
-#  include "welle-cli/alsa-output.h"
-#endif
 #include "backend/radio-receiver.h"
 #include "input/input_factory.h"
 #include "various/channels.h"
