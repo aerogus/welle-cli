@@ -9,6 +9,7 @@
 #include <set>
 #include <utility>
 #include <cstdio>
+#include <cctype>
 #include <unistd.h>
 #include "backend/radio-receiver.h"
 #include "input/input_factory.h"
@@ -420,7 +421,12 @@ int main(int argc, char **argv)
 
         std::stringstream sstream;
         sstream << "0x" << std::setfill('0') << std::hex << s.serviceId;
-        string service_id = tolower(sstream.str());
+        string service_id = sstream.str();
+        // conversion en minuscules
+        if (service_id.begin() != service_id.end()) {
+            auto it = service_id.begin();
+            *it = std::tolower(*it);
+        }
 
         if (options.services.empty() || std::find(options.services.begin(), options.services.end(), service_id) != options.services.end()) {
             cout << "traitement de " << service_id << endl;
@@ -440,9 +446,9 @@ int main(int argc, char **argv)
         }
         cerr << endl;
 
-        string dumpFilePrefix = options.dump_directory + "/" + stream.str();
+        string dumpFilePrefix = options.dump_directory + "/" + sstream.str();
         mkdir(dumpFilePrefix.c_str(), 0755);
-        dumpFilePrefix += "/" + stream.str();
+        dumpFilePrefix += "/" + sstream.str();
         dumpFilePrefix.erase(std::find_if(dumpFilePrefix.rbegin(), dumpFilePrefix.rend(),
                     [](int ch) { return !std::isspace(ch); }).base(), dumpFilePrefix.end());
 

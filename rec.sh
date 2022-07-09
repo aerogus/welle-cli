@@ -7,15 +7,24 @@
 ##
 
 declare -r ABS_PATH="$( cd "$(dirname "$0")" || return; pwd -P )"
-declare -r CONF_FILE="$ABS_PATH/conf/captation.ini"
+declare -r DEFAULT_CONF_FILE="$ABS_PATH/conf/captation.ini"
 declare -r WELLE_CLI_BIN="/usr/local/bin/welle-cli"
+declare -r CUSTOM_CONF_FILE="$1"
 
-if [[ ! -f "$CONF_FILE" ]]; then
-    echo "Fichier $CONF_FILE non trouvé"
+if [[ $CUSTOM_CONF_FILE ]]; then
+    if [[ ! -f "$CUSTOM_CONF_FILE" ]]; then
+        echo "Fichier de conf $CUSTOM_CONF_FILE non trouvé"
+        exit 1
+    else
+        echo "Chargement de la conf personnalisée"
+        . "$CUSTOM_CONF_FILE"
+    fi
+elif [[ ! -f "$DEFAULT_CONF_FILE" ]]; then
+    echo "Fichier de conf $DEFAULT_CONF_FILE non trouvé"
     exit 1
 else
-    echo "Chargement de la conf"
-    . "$CONF_FILE"
+    echo "Chargement de la conf par défaut"
+    . "$DEFAULT_CONF_FILE"
 fi
 
 if [[ ! -d "$REC_DIR" ]]; then
