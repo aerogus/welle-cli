@@ -381,12 +381,12 @@ int main(int argc, char **argv)
 
     rx.restart(false);
 
-    cerr << "Wait for sync" << endl;
+    cerr << "En attente de synchronisation" << endl;
     while (not ri.synced) {
         this_thread::sleep_for(chrono::seconds(3));
     }
 
-    cerr << "Wait for service list" << endl;
+    cerr << "En attente de la liste des services" << endl;
     while (rx.getServiceList().empty()) {
         this_thread::sleep_for(chrono::seconds(1));
     }
