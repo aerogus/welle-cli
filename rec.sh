@@ -50,18 +50,19 @@ do
     FILE_PREFIX="${SERVICE_DIR}/${SERVICE}"
     for EXTENSION in "${EXTENSIONS[@]}"
     do
-        FILENAME="${FILE_PREFIX}.${EXTENSION}"
-        if [[ -f "$FILENAME" ]] || [[ -p "$FILENAME" ]]; then
-            unlink "$FILENAME"
-        fi
-        echo "Création tube nommé $FILENAME"
-        mkfifo "$FILENAME"
+        echo "rien"
+        # ne pas effacer le tube nommé tout le temps ...
+        # impossible d'armer à l'avance sinon
+        #FILENAME="${FILE_PREFIX}.${EXTENSION}"
+        #if [[ -f "$FILENAME" ]] || [[ -p "$FILENAME" ]]; then
+        #    unlink "$FILENAME"
+        #fi
+        #echo "Création tube nommé $FILENAME"
+        #mkfifo "$FILENAME"
 
         # simulation de lecture du flux
-        #cat "${FILENAME}" > /dev/null &
-        #tail -f "${FILENAME}" >> "${FILENAME}.test" &
-        echo "Lecture du tube nommé $FILENAME"
-        "${ABS_PATH}/read-pipe.sh" "${FILENAME}" &
+        #echo "Lecture du tube nommé $FILENAME"
+        #"${ABS_PATH}/read-pipe.sh" "${FILENAME}" &
     done
 done
 

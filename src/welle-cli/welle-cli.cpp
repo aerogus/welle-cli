@@ -98,7 +98,7 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
 
         virtual void onNewDynamicLabel(const std::string& label) override
         {
-            cout << "[0x" << std::hex << SId << std::dec << "] " << "DLS: " << label << endl;
+            cout << "[" << std::hex << SId << std::dec << "] " << "DLS: " << label << endl;
 
             ofstream file_txt;
             string filename_txt = filePrefix + ".txt";
@@ -131,7 +131,7 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
             uint32_t current_mot_size = mot_file.data.size();
             if (current_mot_size == last_size) {
                 // détection de doublon par la taille du fichier
-                cout << "[0x" << std::hex << SId << std::dec << "] MOT BYPASS (doublon " << last_size << " octets)" << endl;
+                cout << "[" << std::hex << SId << std::dec << "] MOT BYPASS (doublon " << last_size << " octets)" << endl;
                 return;
             }
             last_size = current_mot_size;
@@ -160,7 +160,7 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
             file_mot << ss.str();
             file_mot.close();
 
-            cout << "[0x" << std::hex << SId << std::dec << "] MOT reçu " << endl;
+            cout << "[" << std::hex << SId << std::dec << "] MOT reçu " << endl;
         }
 
         virtual void onPADLengthError(size_t announced_xpad_len, size_t xpad_len) override
@@ -212,7 +212,7 @@ class RadioInterface : public RadioControllerInterface
 
         virtual void onServiceDetected(uint32_t sId) override
         {
-            cout << "New Service: 0x" << hex << sId << dec << endl;
+            cout << "New Service: " << hex << sId << dec << endl;
             serviceId = sId;
         }
 
@@ -400,10 +400,10 @@ int main(int argc, char **argv)
     cerr << "Liste des services trouvés :" << endl;
     // boucle des services
     for (const auto& s : rx.getServiceList()) {
-        cerr << "- [0x" << std::hex << s.serviceId << std::dec << "] " << s.serviceLabel.utf8_label() << " ";
+        cerr << "- [" << std::hex << s.serviceId << std::dec << "] " << s.serviceLabel.utf8_label() << " ";
 
         std::stringstream sstream;
-        sstream << "0x" << std::setfill('0') << std::hex << s.serviceId;
+        sstream << std::hex << s.serviceId;
         string service_id = sstream.str();
         // conversion en minuscules
         if (service_id.begin() != service_id.end()) {
