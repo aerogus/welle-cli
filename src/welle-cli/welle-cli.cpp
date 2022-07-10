@@ -36,12 +36,13 @@ std::string rtrim(const std::string &s)
     return (end == std::string::npos) ? "" : s.substr(0, end + 1);
 }
  
-std::string trim(const std::string &s) {
+std::string trim(const std::string &s)
+{
     return rtrim(ltrim(s));
 }
 
-// for string delimiter
-vector<string> split (string s, string delimiter) {
+vector<string> split (string s, string delimiter)
+{
     size_t pos_start = 0, pos_end, delim_len = delimiter.length();
     string token;
     vector<string> res;
@@ -56,7 +57,8 @@ vector<string> split (string s, string delimiter) {
     return res;
 }
 
-class WavProgrammeHandler: public ProgrammeHandlerInterface {
+class WavProgrammeHandler: public ProgrammeHandlerInterface
+{
     public:
         WavProgrammeHandler(uint32_t SId, const std::string& fileprefix) :
             SId(SId),
@@ -78,25 +80,10 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface {
 
         virtual void onNewAudio(std::vector<int16_t>&& audioData, int sampleRate, const string& mode) override
         {
-            if (rate != sampleRate) {
-                cout << "[0x" << std::hex << SId << std::dec << "] " <<
-                    "rate " << sampleRate <<  " mode " << mode << endl;
-
-                string filename = filePrefix + ".wav";
-                if (fd) {
-                    wavfile_close(fd);
-                }
-                fd = wavfile_open(filename.c_str(), sampleRate, 2);
-
-                if (not fd) {
-                    cerr << "Could not open wav file " << filename << endl;
-                }
-            }
-            rate = sampleRate;
-
-            if (fd) {
-                wavfile_write(fd, audioData.data(), audioData.size());
-            }
+            string filename = filePrefix + ".pcm";
+            FILE *file = fopen(filename.c_str(),"ab");
+            fwrite(audioData.data(),sizeof(short),audioData.size(),file);
+            fclose(file);
         }
 
         virtual void onRsErrors(bool uncorrectedErrors, int numCorrectedErrors) override
@@ -190,7 +177,8 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface {
 };
 
 
-class RadioInterface : public RadioControllerInterface {
+class RadioInterface : public RadioControllerInterface
+{
     public:
         // rapport signal sur bruit
         virtual void onSNR(float snr) override
@@ -368,11 +356,6 @@ int main(int argc, char **argv)
 {
     auto options = parse_cmdline(argc, argv);
 
-    if (!options.services.empty()) {
-        // filtrage sur ces serviceIds
-        for (auto sid : options.services) cout << sid << endl;
-    }
-
     RadioInterface ri;
     Channels channels;
     unique_ptr<CVirtualInput> in = nullptr;
@@ -414,10 +397,10 @@ int main(int argc, char **argv)
     using SId_t = uint32_t;
     map<SId_t, WavProgrammeHandler> phs;
 
-    cerr << "Service list" << endl;
+    cerr << "Liste des services trouvés :" << endl;
     // boucle des services
     for (const auto& s : rx.getServiceList()) {
-        cerr << "  [0x" << std::hex << s.serviceId << std::dec << "] " << s.serviceLabel.utf8_label() << " ";
+        cerr << "- [0x" << std::hex << s.serviceId << std::dec << "] " << s.serviceLabel.utf8_label() << " ";
 
         std::stringstream sstream;
         sstream << "0x" << std::setfill('0') << std::hex << s.serviceId;
@@ -428,14 +411,13 @@ int main(int argc, char **argv)
             *it = std::tolower(*it);
         }
 
-        if (options.services.empty() || std::find(options.services.begin(), options.services.end(), service_id) != options.services.end()) {
-            cout << "traitement de " << service_id << endl;
-        } else {
-            cout << "on ne traite pas " << service_id << endl;
+        // si filtrage par service
+        if (!options.services.empty() && std::find(options.services.begin(), options.services.end(), service_id) == options.services.end()) {
+            cerr << " BYPASS" << endl;
             continue;
         }
 
-        // boucle des subchannels
+        // boucle des composants
         for (const auto& sc : rx.getComponents(s)) {
             cerr << " [component "  << sc.componentNr <<
                 " ASCTy: " <<

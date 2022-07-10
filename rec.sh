@@ -36,5 +36,34 @@ if [[ ! -d "$REC_DIR" ]]; then
     fi
 fi
 
-"$WELLE_CLI_BIN" -c "$CHANNEL" -s "$SERVICES" -o "$REC_DIR" 2> /dev/null
+SERVICES=$(echo "$SERVICES" | tr '[:upper:]' '[:lower:]')
+SERVICES_LIST=$(echo "$SERVICES" | tr "," "\n")
+EXTENSIONS=(pcm txt)
+
+# Création des tubes nommés pour les services à capter
+for SERVICE in $SERVICES_LIST
+do
+    SERVICE_DIR="${REC_DIR}/${SERVICE}"
+    if [[ ! -d "$SERVICE_DIR" ]]; then
+        mkdir -p "$SERVICE_DIR"
+    fi
+    FILE_PREFIX="${SERVICE_DIR}/${SERVICE}"
+    for EXTENSION in "${EXTENSIONS[@]}"
+    do
+        FILENAME="${FILE_PREFIX}.${EXTENSION}"
+        if [[ -f "$FILENAME" ]] || [[ -p "$FILENAME" ]]; then
+            unlink "$FILENAME"
+        fi
+        echo "Création tube nommé $FILENAME"
+        mkfifo "$FILENAME"
+
+        # simulation de lecture du flux
+        #cat "${FILENAME}" > /dev/null &
+        #tail -f "${FILENAME}" >> "${FILENAME}.test" &
+        echo "Lecture du tube nommé $FILENAME"
+        "${ABS_PATH}/read-pipe.sh" "${FILENAME}" &
+    done
+done
+
+"$WELLE_CLI_BIN" -c "$CHANNEL" -s "$SERVICES" -o "$REC_DIR" 2>&1
 

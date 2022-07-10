@@ -49,7 +49,7 @@ FILE* wavfile_open(const char *filename, int rate, int channels)
     header.bits_per_sample = bits_per_sample;
     header.data_length = 0;
 
-    FILE *file = fopen(filename,"w");
+    FILE *file = fopen(filename,"r+");
     if (!file) return 0;
 
     fwrite(&header,sizeof(header),1,file);
@@ -62,6 +62,7 @@ FILE* wavfile_open(const char *filename, int rate, int channels)
 void wavfile_write( FILE *file, short data[], int length )
 {
     fwrite(data,sizeof(short),length,file);
+    fflush(file);
 }
 
 void wavfile_close( FILE *file )

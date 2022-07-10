@@ -124,6 +124,27 @@ https://www.etsi.org/deliver/etsi_ts/101400_101499/101499/02.02.01_60/ts_101499v
 
 ## Démarrage captation
 
+Création préalable des tubes nommés pour les services à capter. ex:
+
+```
+mkfifo 0xf201/0xf201.wav 0xf201/0xf201.txt
+```
+
 Armer les captations
 
-systemctl start captation@NWB
+```
+systemctl start captation@NWB_FIF
+systemctl start captation-dab@NWB_FIF
+````
+
+Démarrer la réception + décodage du multiplex avec welle-cli
+
+```
+./rec.sh
+```
+
+ex lire un tube nommé, alimenté en flux pcm, avec ffplay
+
+```
+cat 0xf201.pcm | ffplay -f s16le -ar 48k -ac 2 -
+```
