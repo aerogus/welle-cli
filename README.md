@@ -1,48 +1,110 @@
-# welle.io modifié pour une captation linéaire
+# welle.io modifié pour une captation linéaire du DAB+
 
 Expérimentation de captation DAB+ avec clé rtl-sdr et welle.io.
 
 **Ce projet est un fork, simplifié, de welle.io.**
 
-welle-cli issu du projet welle.io est intéressant mais demande quelques modifications pour répondre au besoin de captation linéaire. Voici les modifs effectuées ou souhaitées :
+welle-cli issu du projet welle.io est intéressant mais demande quelques modifications pour répondre au besoin de captation linéaire. Voici les modifs effectuées :
 
-- Décodage de tous les programmes du multiplex ("ensemble"), par défaut, ou décodage seulement des programmes souhaités si le param `sid` est saisi,
-auquel cas on ne décode que les sid passés en param. séparation par virgule. ex :
--s [--sid] f00d,f00e
+- Choix du canal du multiplex. param `-c`. Ex: `-c 5A`
+- Choix du/des services à décoder. param `-s`. Saisir les serviceIds séparés par des virgules. Ex: `-s f00d,f00e`
+- Choix du répertoire de stockage. param `-o`. Ex: `-o /path/to/rec`
+- Le nommage des fichiers est basé sur le serviceId plutôt que le serviceLabel.
+- type d'arborescence
+  - /home/rec/0xf00d/0xf00d.pcm
+  - /home/rec/0xf00d/0xf00d.ndjson
+  - /home/rec/0xf00d/0xf00d-timestamp.jpg|png
 
-- Définir le répertoire de stockage du dump (par défaut le répertoire courant: pas pratique)
--o [--outputDir] /path/to/rec
-gestion d'erreur si rep n'existe pas ou pas inscriptible.
-création du rép / sous rép si besoin
+## Compilation
 
-- baser le nommage/préfixe sur le sid plutôt que le program name qui peut comporter des espaces ou même changer de nom
--n [--sidName]
-actuellement comportement modifié en dur
+```
+cd welle.io
+mkdir build
+cd build
+cmake .. -DRTLSDR=1 -DBUILD_WELLE_IO=OFF -DBUILD_WELLE_CLI=ON
+make
+sudo make install
+```
 
-- mode tube nommé plutôt que vrai fichier sur disque
--p [--pipe]
+## Contenu d'un multiplex DAB+
 
-- un répertoire de stockage par sid
-  - /home/rec/0xf00d/0xf00d.wav
-  - /home/rec/0xf00d/0xf00d.txt
-  - /home/rec/0xf00d/0xf00d-content-name.jpg|png
+Un multiplex DAB+, ou ensemble, est caractérisé par une fréquence centrale en MHz.
+La bande III VHF est divisée en blocs, ou canaux, de 1536 kHz de large.
+
+À titre d'exemple Les blocs actuellement utilisés sur Paris sont les suivants :
+
+| Bloc | Fréquence   |
+| ---- | ----------- |
+|  5A  | 174.928 MHz |
+|  6A  | 181.936 MHz |
+|  6C  | 185.360 MHz |
+|  6D  | 187.072 MHz |
+|  8C  | 199.360 MHz |
+|  9A  | 202.928 MHz |
+|  9B  | 204.640 MHz |
+| 11A  | 216.928 MHz |
+| 11B  | 218.640 MHz |
+
+source: https://fr.wikipedia.org/wiki/Bandes_de_fr%C3%A9quences_de_la_t%C3%A9l%C3%A9vision_terrestre
+
+Un ensemble a comme propriétés les informations suivantes :
+
+- ensembleId : ex F001
+- ensembleLabel: ex Paris-Etendu
+- une liste de service
+
+Un service est caractérisé par :
+
+- serviceId: ex FEED
+- serviceLabel: ex RADIO LiFE
+
+- flux audio
+natif : aac 88 kbps stéréo 48 kHz 960 frames / sec
+décodé : wav pcm stéréo 16 bits 48 kHz
+
+- DLS (Dynamic Label Segment)
+  128 octets, encodage utf-8
+The dynamic label feature provides short textual messages which are associated with audio programme content for
+display on receivers. The messages can have any length up to a maximum of 128 bytes; depending on the character set
+used, the message can have up to 128 characters. 
+https://www.etsi.org/deliver/etsi_en/300400_300499/300401/02.01.01_60/en_300401v020101p.pdf
+
+- MOT Slideshow (image)
+  Multimedia Object Transfer
+  JPEG ou PNG 320x240 (ou +)
+  ClickThroughURL (512 octets)
+
+https://www.etsi.org/deliver/etsi_ts/101400_101499/101499/02.02.01_60/ts_101499v020201p.pdf
 
 
-preprocess :
+## Démarrage captation
 
-- recup liste des sids trouvés
-- si filtre, 
-filename = /home/rec/0xf00d.wav
-if -f $filename
-  unlink $filename
-if $sids à decoder:
-  boucle $sids
-  mkfifo /home/rec/0xf00d.wav
-sinon:
-  ln -s /home/rec/0xf00d.wav /dev/null
+Création préalable des tubes nommés pour les services à capter. ex:
 
+```
+mkfifo 0xf201/0xf201.pcm 0xf201/0xf201.ndjson
+```
 
-## Visualiser les bibliothèques partagées utilisées par un binaire
+Armer les captations
+
+```
+systemctl start captation@NWB_FIF
+systemctl start captation-dab@NWB_FIF
+````
+
+Démarrer la réception + décodage du multiplex avec welle-cli
+
+```
+./rec.sh
+```
+
+ex lire un tube nommé, alimenté en flux pcm, avec ffplay
+
+```
+cat 0xf201.pcm | ffplay -f s16le -ar 48k -ac 2 -
+```
+
+## Divers: visualiser les bibliothèques partagées utilisées par un binaire
 
 ### sous MacOS
 
@@ -76,75 +138,4 @@ $ ldd welle-cli
 	/lib/ld-linux-aarch64.so.1 (0x0000007faef71000)
 	libdl.so.2 => /lib/aarch64-linux-gnu/libdl.so.2 (0x0000007fae64f000)
 	libudev.so.1 => /lib/aarch64-linux-gnu/libudev.so.1 (0x0000007fae618000)
-```
-
-## Compilation
-
-```
-cd welle.io
-mkdir build
-cd build
-cmake .. -DRTLSDR=1 -DBUILD_WELLE_IO=OFF -DBUILD_WELLE_CLI=ON
-make
-sudo make install
-```
-
-## Contenu
-
-- flux audio
-natif : aac 88 kbps stéréo 48 kHz 960 frames / sec
-décodé : wav pcm stéréo 16 bits 48 kHz
-
-- DLS (Dynamic Label Segment)
-  128 octets, encodage utf-8
-The dynamic label feature provides short textual messages which are associated with audio programme content for
-display on receivers. The messages can have any length up to a maximum of 128 bytes; depending on the character set
-used, the message can have up to 128 characters. 
-https://www.etsi.org/deliver/etsi_en/300400_300499/300401/02.01.01_60/en_300401v020101p.pdf
-
-- EnsembleId
-  ex: 0xf011
-
-- EnsembleLabel
-  ex: PARIS 9B
-
-- ServiceLabel
-  ex: RADIO PITCHOUN
-
-- ServiceId
-  ex: 0xf8fe
-
-- MOT Slideshow (image)
-  Multimedia Object Transfer
-  JPEG ou PNG 320x240 (ou +)
-  ClickThroughURL (512 octets)
-
-https://www.etsi.org/deliver/etsi_ts/101400_101499/101499/02.02.01_60/ts_101499v020201p.pdf
-
-
-## Démarrage captation
-
-Création préalable des tubes nommés pour les services à capter. ex:
-
-```
-mkfifo 0xf201/0xf201.wav 0xf201/0xf201.txt
-```
-
-Armer les captations
-
-```
-systemctl start captation@NWB_FIF
-systemctl start captation-dab@NWB_FIF
-````
-
-Démarrer la réception + décodage du multiplex avec welle-cli
-
-```
-./rec.sh
-```
-
-ex lire un tube nommé, alimenté en flux pcm, avec ffplay
-
-```
-cat 0xf201.pcm | ffplay -f s16le -ar 48k -ac 2 -
 ```

@@ -121,7 +121,6 @@ set(backend_sources
     src/various/channels.cpp
     src/various/fft.cpp
     src/various/profiling.cpp
-    src/various/wavfile.c
     src/libs/fec/decode_rs_char.c
     src/libs/fec/encode_rs_char.c
     src/libs/fec/init_rs_char.c

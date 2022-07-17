@@ -15,15 +15,12 @@
 #include "input/input_factory.h"
 #include "various/channels.h"
 #include "libs/json.hpp"
-extern "C" {
-#include "various/wavfile.h"
-}
 
 using namespace std;
 using namespace nlohmann;
 
 const std::string WHITESPACE = " \n\r\t\f\v";
- 
+
 std::string ltrim(const std::string &s)
 {
     size_t start = s.find_first_not_of(WHITESPACE);
@@ -35,7 +32,7 @@ std::string rtrim(const std::string &s)
     size_t end = s.find_last_not_of(WHITESPACE);
     return (end == std::string::npos) ? "" : s.substr(0, end + 1);
 }
- 
+
 std::string trim(const std::string &s)
 {
     return rtrim(ltrim(s));
@@ -63,11 +60,7 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
         WavProgrammeHandler(uint32_t SId, const std::string& fileprefix) :
             SId(SId),
             filePrefix(fileprefix) {}
-        ~WavProgrammeHandler() {
-            if (fd) {
-                wavfile_close(fd);
-            }
-        }
+
         WavProgrammeHandler(const WavProgrammeHandler& other) = delete;
         WavProgrammeHandler& operator=(const WavProgrammeHandler& other) = delete;
         WavProgrammeHandler(WavProgrammeHandler&& other) = default;
@@ -80,6 +73,8 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
 
         virtual void onNewAudio(std::vector<int16_t>&& audioData, int sampleRate, const string& mode) override
         {
+            // un nouveau buffer audio pcm a été reçu, on l'écrit dans le fichier
+
             string filename = filePrefix + ".pcm";
             FILE *file = fopen(filename.c_str(),"ab");
             fwrite(audioData.data(),sizeof(short),audioData.size(),file);
@@ -98,22 +93,22 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
 
         virtual void onNewDynamicLabel(const std::string& label) override
         {
-            cout << "[" << std::hex << SId << std::dec << "] " << "DLS: " << label << endl;
-
-            ofstream file_txt;
-            string filename_txt = filePrefix + ".txt";
+            ofstream file;
+            string filename = filePrefix + ".ndjson";
             unsigned long int timestamp = time(NULL);
 
-            file_txt.open(filename_txt, std::ios_base::app);
+            file.open(filename, std::ios_base::app);
 
             json j;
             j["dls"] = {
                 {"value", trim(label)},
                 {"ts", timestamp}
             };
-            file_txt << j << endl;
+            file << j << endl;
 
-            file_txt.close();
+            file.close();
+
+            cout << "[" << std::hex << SId << std::dec << "] " << j << endl;
         }
 
         virtual void onMOT(const mot_file_t& mot_file) override
@@ -137,7 +132,7 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
             last_size = current_mot_size;
 
             string filename_mot = filePrefix + "-" + std::to_string(timestamp) + "." + extension;
-            string filename_txt = filePrefix + ".txt";
+            string filename_txt = filePrefix + ".ndjson";
             file_txt.open(filename_txt, std::ios_base::app);
 
             json j;
@@ -152,15 +147,16 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
             file_txt << j << endl;
             file_txt.close();
 
+            // enregistrement de l'image MOT
             file_mot.open(filename_mot);
             std::stringstream ss;
-            for (auto it = mot_file.data.begin(); it != mot_file.data.end(); it++)    {
+            for (auto it = mot_file.data.begin(); it != mot_file.data.end(); it++) {
                 ss << *it;
             }
             file_mot << ss.str();
             file_mot.close();
 
-            cout << "[" << std::hex << SId << std::dec << "] MOT reçu " << endl;
+            cout << "[" << std::hex << SId << std::dec << "] " << j << endl;
         }
 
         virtual void onPADLengthError(size_t announced_xpad_len, size_t xpad_len) override
@@ -169,11 +165,9 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
         }
 
     private:
-        uint32_t last_size = 0;
+        uint32_t last_size = 0; // stocke la taille en octets du dernier MOT
         uint32_t SId;
         string filePrefix;
-        FILE* fd = nullptr;
-        int rate = 0;
 };
 
 
@@ -188,7 +182,9 @@ class RadioInterface : public RadioControllerInterface
 
             j["snr"] = {
                 {"ts", timestamp},
-                {"value", snr}
+                {"value", snr},
+                {"channel", channel},
+                {"frequency", frequency}
             };
 
             if (last_snr != j) {
@@ -218,16 +214,17 @@ class RadioInterface : public RadioControllerInterface
 
         virtual void onNewEnsemble(uint16_t eId) override
         {
-            //cout << "Ensemble name id: " << hex << eId << dec << endl;
+            //cout << "ensembleId: " << hex << eId << dec << endl;
             ensembleId = eId;
         }
 
         virtual void onSetEnsembleLabel(DabLabel& label) override
         {
-            //cout << "Ensemble label: " << label.utf8_label() << endl;
+            //cout << "ensembleLabel: " << label.utf8_label() << endl;
             ensembleLabel = label.utf8_label();
         }
 
+        // le multiplex indique l'heure
         virtual void onDateTimeUpdate(const dab_date_time_t& dateTime) override
         {
             json j;
@@ -287,6 +284,8 @@ class RadioInterface : public RadioControllerInterface
         {
             json j;
             j["TII"] = {
+                {"channel", channel},
+                {"frequency", frequency},
                 {"comb", m.comb},
                 {"pattern", m.pattern},
                 {"delay", m.delay_samples},
@@ -305,6 +304,9 @@ class RadioInterface : public RadioControllerInterface
         string serviceLabel = "";
         int ensembleId = 0;
         string ensembleLabel = "";
+
+        string channel = "";
+        string frequency = "";
 };
 
 struct options_t {
@@ -323,7 +325,7 @@ struct options_t {
 options_t parse_cmdline(int argc, char **argv)
 {
     options_t options;
-    options.rro.decodeTII = false;
+    options.rro.decodeTII = false; // décodage de localisation de l'émetteur ?
 
     int opt;
     while ((opt = getopt(argc, argv, "c:o:g:s:u")) != -1) {
@@ -377,6 +379,9 @@ int main(int argc, char **argv)
     in->setFrequency(freq);
     string service_to_tune = options.programme;
 
+    ri.frequency = freq;
+    ri.channel = options.channel;
+
     RadioReceiver rx(ri, *in, options.rro);
 
     rx.restart(false);
@@ -417,17 +422,6 @@ int main(int argc, char **argv)
             continue;
         }
 
-        // boucle des composants
-        for (const auto& sc : rx.getComponents(s)) {
-            cerr << " [component "  << sc.componentNr <<
-                " ASCTy: " <<
-                (sc.audioType() == AudioServiceComponentType::DABPlus ? "DAB+" : "unknown") << " ]";
-
-            const auto& sub = rx.getSubchannel(sc);
-            cerr << " [subch " << sub.subChId << " bitrate:" << sub.bitrate() << " at SAd:" << sub.startAddr << "]";
-        }
-        cerr << endl;
-
         string dumpFilePrefix = options.dump_directory + "/" + sstream.str();
         mkdir(dumpFilePrefix.c_str(), 0755);
         dumpFilePrefix += "/" + sstream.str();
@@ -435,7 +429,7 @@ int main(int argc, char **argv)
                     [](int ch) { return !std::isspace(ch); }).base(), dumpFilePrefix.end());
 
         ofstream file_txt;
-        string filename_sid = dumpFilePrefix + ".txt";
+        string filename_sid = dumpFilePrefix + ".ndjson";
         file_txt.open(filename_sid, std::ios_base::app);
         unsigned long int timestamp = time(NULL);
 
@@ -443,17 +437,37 @@ int main(int argc, char **argv)
         je["ensemble"] = {
             {"emsembleId", ri.ensembleId},
             {"ensembleLabel", trim(ri.ensembleLabel)},
+            {"channel", options.channel},
+            {"frequency", freq},
             {"ts", timestamp}
         };
         file_txt << je << endl;
 
-        json js;
-        js["service"] = {
-            {"serviceId", s.serviceId},
-            {"serviceLabel", trim(s.serviceLabel.utf8_label())},
-            {"ts", timestamp}
-        };
-        file_txt << js << endl;
+        // boucle des composants
+        for (const auto& sc : rx.getComponents(s)) {
+
+            cerr << " [component "  << sc.componentNr <<
+                " ASCTy: " <<
+                (sc.audioType() == AudioServiceComponentType::DABPlus ? "DAB+" : "unknown") << " ]";
+
+            const auto& sub = rx.getSubchannel(sc);
+            cerr << " [subch " << sub.subChId << " bitrate:" << sub.bitrate() << " at SAd:" << sub.startAddr << "]";
+
+            json js;
+            js["service"] = {
+                {"serviceId", s.serviceId},
+                {"serviceLabel", trim(s.serviceLabel.utf8_label())},
+                {"componentNr", sc.componentNr},
+                {"ascty", sc.audioType()},
+                {"subCh", sub.subChId},
+                {"bitrate", sub.bitrate()},
+                {"startAddr", sub.startAddr},
+                {"ts", timestamp}
+            };
+            file_txt << js << endl;
+
+        }
+        cerr << endl;
 
         file_txt.close();
 
