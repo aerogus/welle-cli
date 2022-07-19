@@ -1,3 +1,7 @@
+##
+# Exemple de fichier de configuration de welle-cli
+##
+
 # Chemin de stockage de la captation
 REC_DIR="/path/to/data"
 

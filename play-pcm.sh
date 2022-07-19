@@ -2,6 +2,17 @@
 
 ##
 # Joue un stream PCM
+#
+# Usage: ./play-pcm.sh audio.pcm
 ##
 
-cat "$1" | ffplay -f s16le -ar 48k -ac 2 -
+FORMAT="s16le"
+SAMPLING_RATE="48k"
+CHANNELS="2"
+
+if [[ ! -f $1 ]] && [[ ! -p $1 ]]; then
+  "fichier ou tube nommé $1 non trouvé"
+  exit 1
+fi
+
+cat "$1" | ffplay -f $FORMAT -ar $SAMPLING_RATE -ac $CHANNELS -
