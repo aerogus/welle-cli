@@ -43,7 +43,7 @@ echo "- Services:  $SERVICES"
 # en interne, les servicesId sont en minuscules
 SERVICES=$(echo "$SERVICES" | tr '[:upper:]' '[:lower:]')
 SERVICES_LIST=$(echo "$SERVICES" | tr "," "\n")
-EXTENSIONS=(pcm ndjson)
+EXTENSIONS=(pcm main.ndjson ndjson)
 
 # Création des tubes nommés pour les services à capter
 for SERVICE in $SERVICES_LIST
@@ -70,8 +70,8 @@ do
         fi
 
 	# simulation de lecture des flux (en background)
-        echo "Lecture du tube nommé $FILENAME"
-        "${ABS_PATH}/read-pipe.sh" "${FILENAME}" &
+        #echo "Lecture du tube nommé $FILENAME"
+        #"${ABS_PATH}/read-pipe.sh" "${FILENAME}" &
     done
 done
 

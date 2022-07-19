@@ -105,7 +105,7 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
                 {"ts", timestamp}
             };
             file << j << endl;
-
+            file.flush();
             file.close();
 
             cout << "[" << std::hex << SId << std::dec << "] " << j << endl;
@@ -120,7 +120,7 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
                 extension = "png";
             }
 
-            ofstream file_mot, file_txt;
+            ofstream file_mot, file_txt3;
             unsigned long int timestamp = time(NULL);
 
             uint32_t current_mot_size = mot_file.data.size();
@@ -133,7 +133,7 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
 
             string filename_mot = filePrefix + "-" + std::to_string(timestamp) + "." + extension;
             string filename_txt = filePrefix + ".ndjson";
-            file_txt.open(filename_txt, std::ios_base::app);
+            file_txt3.open(filename_txt, std::ios_base::app);
 
             json j;
             j["mot"] = {
@@ -143,9 +143,10 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
                 {"category_title", mot_file.category_title},
                 {"ts", timestamp}
             };
-
-            file_txt << j << endl;
-            file_txt.close();
+            cout << j << endl;
+            file_txt3 << j << endl;
+	    file_txt3.flush();
+            file_txt3.close();
 
             // enregistrement de l'image MOT
             file_mot.open(filename_mot);
@@ -446,9 +447,7 @@ int main(int argc, char **argv)
         dumpFilePrefix.erase(std::find_if(dumpFilePrefix.rbegin(), dumpFilePrefix.rend(),
                     [](int ch) { return !std::isspace(ch); }).base(), dumpFilePrefix.end());
 
-        ofstream file_txt;
-        string filename_sid = dumpFilePrefix + ".ndjson";
-        file_txt.open(filename_sid, std::ios_base::app);
+        string filename_txt = dumpFilePrefix + ".main.ndjson";
         unsigned long int timestamp = time(NULL);
 
         json je;
@@ -457,9 +456,21 @@ int main(int argc, char **argv)
             {"ensembleLabel", trim(ri.ensembleLabel)},
             {"channel", options.channel},
             {"frequency", freq},
-            {"ts", timestamp}
+            {"ts", timestamp},
+	    {"debug", "debug"}
         };
-        file_txt << je << endl;
+	cout << je << endl;
+	std::ofstream file_txt2;
+	file_txt2.open(filename_txt, std::ios_base::app);
+	if (file_txt2.is_open()) {
+		cout << "écriture dans " << filename_txt << endl;
+        	file_txt2 << "coucou" << endl;
+		file_txt2 << je << endl;
+		file_txt2.flush();
+        	file_txt2.close();
+	} else {
+		cerr << "oups" << endl;
+	}
 
         // boucle des composants
         for (const auto& sc : rx.getComponents(s)) {
@@ -473,21 +484,28 @@ int main(int argc, char **argv)
 
             json js;
             js["service"] = {
-                {"serviceId", s.serviceId},
+                {"serviceId", s.serviceId}, // à convertir en hexa
                 {"serviceLabel", trim(s.serviceLabel.utf8_label())},
                 {"componentNr", sc.componentNr},
                 {"ascty", sc.audioType()},
                 {"subCh", sub.subChId},
                 {"bitrate", sub.bitrate()},
                 {"startAddr", sub.startAddr},
-                {"ts", timestamp}
+                {"ts", timestamp},
+		{"debug", "debug"}
             };
-            file_txt << js << endl;
-
+	    cout << js << endl;
+            file_txt2.open(filename_txt, std::ios_base::app);
+	    if (file_txt2.is_open()) {
+		    file_txt2 << "koukou" << endl;
+		    file_txt2 << js << endl;
+	    	    file_txt2.flush();
+	    	    file_txt2.close();
+	    } else {
+		    cerr << "oups" << endl;
+	    }
         }
         cerr << endl;
-
-        file_txt.close();
 
         WavProgrammeHandler ph(s.serviceId, dumpFilePrefix);
         phs.emplace(std::make_pair(s.serviceId, move(ph)));
