@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 ##
-# captation DAB+
+# captation DAB+ avec welle-cli
 #
 # canaux actifs à Paris: 5A, 6A, 6C, 6D, 8C, 9A, 9B, 11A, 11B
 ##
@@ -13,32 +13,37 @@ declare -r CUSTOM_CONF_FILE="$1"
 
 if [[ $CUSTOM_CONF_FILE ]]; then
     if [[ ! -f "$CUSTOM_CONF_FILE" ]]; then
-        echo "Fichier de conf $CUSTOM_CONF_FILE non trouvé"
+        echo "- Fichier de configuration personnalisée $CUSTOM_CONF_FILE non trouvé"
         exit 1
     else
-        echo "Chargement de la conf personnalisée"
+        echo "- Config:    $CUSTOM_CONF_FILE"
         . "$CUSTOM_CONF_FILE"
     fi
 elif [[ ! -f "$DEFAULT_CONF_FILE" ]]; then
-    echo "Fichier de conf $DEFAULT_CONF_FILE non trouvé"
+    echo "- Fichier de configuration par défaut $DEFAULT_CONF_FILE non trouvé"
     exit 1
 else
-    echo "Chargement de la conf par défaut"
+    echo "- Config:    $DEFAULT_CONF_FILE"
     . "$DEFAULT_CONF_FILE"
 fi
 
 if [[ ! -d "$REC_DIR" ]]; then
     if mkdir -p "$REC_DIR" 2>/dev/null; then
-        echo "Création du répertoire de stockage $REC_DIR"
+        echo "- Création du répertoire de stockage $REC_DIR"
     else
-        echo "Erreur à la création du répertoire de stockage $REC_DIR"
+        echo "- Erreur à la création du répertoire de stockage $REC_DIR"
         exit 1
     fi
 fi
 
+echo "- Stockage:  $REC_DIR"
+echo "- Multiplex: $CHANNEL"
+echo "- Services:  $SERVICES"
+
+# en interne, les servicesId sont en minuscules
 SERVICES=$(echo "$SERVICES" | tr '[:upper:]' '[:lower:]')
 SERVICES_LIST=$(echo "$SERVICES" | tr "," "\n")
-EXTENSIONS=(pcm txt)
+EXTENSIONS=(pcm ndjson)
 
 # Création des tubes nommés pour les services à capter
 for SERVICE in $SERVICES_LIST
@@ -50,21 +55,27 @@ do
     FILE_PREFIX="${SERVICE_DIR}/${SERVICE}"
     for EXTENSION in "${EXTENSIONS[@]}"
     do
-        echo "rien"
         # ne pas effacer le tube nommé tout le temps ...
         # impossible d'armer à l'avance sinon
-        #FILENAME="${FILE_PREFIX}.${EXTENSION}"
-        #if [[ -f "$FILENAME" ]] || [[ -p "$FILENAME" ]]; then
-        #    unlink "$FILENAME"
-        #fi
-        #echo "Création tube nommé $FILENAME"
-        #mkfifo "$FILENAME"
+        FILENAME="${FILE_PREFIX}.${EXTENSION}"
+        if [[ -f "$FILENAME" ]]; then
+             echo "ERREUR: $FILENAME doit être un tube nommé"
+	     exit 1
+	fi
+        if [[ ! -p "$FILENAME" ]]; then
+	    echo "- Création du tube nommé $FILENAME"
+	    mkfifo "$FILENAME"
+        else
+            echo "- Tube nommé $FILENAME déjà existant"
+        fi
 
-        # simulation de lecture du flux
-        #echo "Lecture du tube nommé $FILENAME"
-        #"${ABS_PATH}/read-pipe.sh" "${FILENAME}" &
+	# simulation de lecture des flux (en background)
+        echo "Lecture du tube nommé $FILENAME"
+        "${ABS_PATH}/read-pipe.sh" "${FILENAME}" &
     done
 done
 
+echo "- Lancement de welle-cli"
+echo "---"
 "$WELLE_CLI_BIN" -c "$CHANNEL" -s "$SERVICES" -o "$REC_DIR" 2>&1
 

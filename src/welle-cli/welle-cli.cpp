@@ -208,20 +208,36 @@ class RadioInterface : public RadioControllerInterface
 
         virtual void onServiceDetected(uint32_t sId) override
         {
-            cout << "New Service: " << hex << sId << dec << endl;
             serviceId = sId;
+            stringstream _serviceIdStr;
+	    _serviceIdStr << hex << serviceId;
+	    serviceIdStr = _serviceIdStr.str();
+
+            cout << "Nouveau service détecté: serviceId=" << _serviceIdStr.str() << endl;
         }
 
         virtual void onNewEnsemble(uint16_t eId) override
         {
-            //cout << "ensembleId: " << hex << eId << dec << endl;
             ensembleId = eId;
+	    stringstream _ensembleIdStr;
+	    _ensembleIdStr << hex << ensembleId;
+            ensembleIdStr = _ensembleIdStr.str();
+
+            cout << "Nouvel ensemble: ensembleId=" << _ensembleIdStr.str() << endl;
         }
 
         virtual void onSetEnsembleLabel(DabLabel& label) override
         {
-            //cout << "ensembleLabel: " << label.utf8_label() << endl;
             ensembleLabel = label.utf8_label();
+
+	    json j;
+	    j["ensemble"] = {
+                {"channel", channel},
+		{"frequency", frequency},
+                {"ensembleId", ensembleIdStr},
+                {"ensembleLabel", ensembleLabel}
+            };
+	    cout << j << endl;
         }
 
         // le multiplex indique l'heure
@@ -238,7 +254,7 @@ class RadioInterface : public RadioControllerInterface
             };
 
             if (last_date_time != j) {
-                //cout << j << endl;
+                cout << j << endl;
                 last_date_time = j;
             }
         }
@@ -301,8 +317,11 @@ class RadioInterface : public RadioControllerInterface
         FILE* fic_fd = nullptr;
 
         int serviceId = 0;
+	string serviceIdStr = "";
         string serviceLabel = "";
+
         int ensembleId = 0;
+	string ensembleIdStr = "";
         string ensembleLabel = "";
 
         string channel = "";
@@ -311,9 +330,8 @@ class RadioInterface : public RadioControllerInterface
 
 struct options_t {
     int gain = -1;
-    string channel = "10B";
+    string channel = "5A";
     vector<string> services;
-    string programme = "GRRIF";
     string frontend = "auto";
     string frontend_args = "";
     string dump_directory = "";
@@ -377,9 +395,9 @@ int main(int argc, char **argv)
 
     auto freq = channels.getFrequency(options.channel);
     in->setFrequency(freq);
-    string service_to_tune = options.programme;
+    string service_to_tune = "";
 
-    ri.frequency = freq;
+    ri.frequency = std::to_string(freq);
     ri.channel = options.channel;
 
     RadioReceiver rx(ri, *in, options.rro);
@@ -405,7 +423,7 @@ int main(int argc, char **argv)
     cerr << "Liste des services trouvés :" << endl;
     // boucle des services
     for (const auto& s : rx.getServiceList()) {
-        cerr << "- [" << std::hex << s.serviceId << std::dec << "] " << s.serviceLabel.utf8_label() << " ";
+        cerr << "- [" << std::hex << s.serviceId << std::dec << "] " << s.serviceLabel.utf8_label() << endl;
 
         std::stringstream sstream;
         sstream << std::hex << s.serviceId;
@@ -435,7 +453,7 @@ int main(int argc, char **argv)
 
         json je;
         je["ensemble"] = {
-            {"emsembleId", ri.ensembleId},
+            {"emsembleId", ri.ensembleIdStr},
             {"ensembleLabel", trim(ri.ensembleLabel)},
             {"channel", options.channel},
             {"frequency", freq},
