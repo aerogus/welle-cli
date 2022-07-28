@@ -71,7 +71,6 @@ endif()
 
 find_package(Threads REQUIRED)
 find_package(Faad REQUIRED)
-find_package(MPG123 REQUIRED)
 
 if (RTLSDR)
     find_package(LibRTLSDR REQUIRED)
@@ -162,7 +161,6 @@ if(BUILD_WELLE_CLI)
       ${LIBAIRSPY_LIBRARIES}
       ${FFTW3F_LIBRARIES}
       ${FAAD_LIBRARIES}
-      ${MPG123_LIBRARIES}
       Threads::Threads
     )
 
