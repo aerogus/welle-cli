@@ -12,6 +12,6 @@ fi
 mkdir "$BUILD_DIR"
 
 cd "$BUILD_DIR" && \
-cmake .. -DRTLSDR=1 -DBUILD_WELLE_IO=OFF -DBUILD_WELLE_CLI=ON \
+cmake .. \
 && make \
 && sudo make install

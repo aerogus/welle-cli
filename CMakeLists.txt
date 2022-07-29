@@ -9,10 +9,7 @@ endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 14)
 
-option(BUILD_WELLE_IO    "Build Welle.io"                        OFF )
 option(BUILD_WELLE_CLI   "Build welle-cli"                       ON  )
-option(WITH_APP_BUNDLE   "Enable Application Bundle for macOS"   OFF )
-option(KISS_FFT          "KISS FFT instead of FFTW"              OFF )
 option(PROFILING         "Enable profiling (see README.md)"      OFF )
 option(AIRSPY            "Compile with Airspy support"           OFF )
 option(RTLSDR            "Compile with RTL-SDR support"          ON  )
@@ -36,38 +33,15 @@ set(CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE} CACHE STRING "")
 
 list(INSERT CMAKE_MODULE_PATH 0 ${CMAKE_SOURCE_DIR}/cmake/Modules)
 
-if(APPLE AND WITH_APP_BUNDLE)
-    if(NOT DEFINED BUNDLE_INSTALL_DIR)
-        set(BUNDLE_INSTALL_DIR "/Applications")
-    endif()
-
-    set(GUI_INSTALL_DIR "${BUNDLE_INSTALL_DIR}")
-else()
-    include(GNUInstallDirs)
-
-    set(GUI_INSTALL_DIR "${CMAKE_INSTALL_BINDIR}")
-endif()
-
-if(BUILD_WELLE_IO)
-    set(CMAKE_AUTOMOC ON)
-    set(CMAKE_AUTORCC ON)
-
-    find_package(Qt5 COMPONENTS Widgets Quick QuickControls2 Multimedia Charts Qml DBus REQUIRED)
-endif()
+include(GNUInstallDirs)
+set(GUI_INSTALL_DIR "${CMAKE_INSTALL_BINDIR}")
 
 if(PROFILING)
     add_definitions(-DWITH_PROFILING)
 endif()
 
-if(KISS_FFT)
-    add_definitions(-DKISSFFT)
-    set(fft_sources src/libs/kiss_fft/kiss_fft.c)
-    set(KISS_INCLUDE_DIRS src/libs/kiss_fft)
-else()
-    find_package(FFTW3f REQUIRED)
-    set(fft_sources "")
-    set(KISS_INCLUDE_DIRS "")
-endif()
+find_package(FFTW3f REQUIRED)
+set(fft_sources "")
 
 find_package(Threads REQUIRED)
 find_package(Faad REQUIRED)
@@ -88,7 +62,6 @@ include_directories(
     src/input
     src/libs/fec
     ${FFTW3F_INCLUDE_DIRS}
-    ${KISS_INCLUDE_DIRS}
     ${FAAD_INCLUDE_DIRS}
     ${LIBRTLSDR_INCLUDE_DIRS}
 )
