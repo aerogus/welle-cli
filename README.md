@@ -4,24 +4,26 @@ Expérimentation de captation DAB+ avec clé rtl-sdr et welle.io.
 
 **Ce projet est un fork, simplifié, de welle.io.**
 
-welle-cli issu du projet welle.io est intéressant mais demande quelques modifications pour répondre au besoin de captation linéaire. Voici les modifs effectuées :
+`welle-cli` issu du projet `welle.io` est intéressant mais demande quelques modifications pour répondre au besoin d'une captation linéaire multicanaux. Voici les modifs effectuées par rapport au projet d'origine :
 
 - Choix du canal du multiplex. param `-c`. Ex: `-c 5A`
-- Choix du/des services à décoder. param `-s`. Saisir les serviceIds séparés par des virgules. Ex: `-s f00d,f00e`
-- Choix du répertoire de stockage. param `-o`. Ex: `-o /path/to/rec`
+- Choix explicite du/des services à décoder. param `-s`. Saisir les serviceIds séparés par des virgules. Ex: `-s f00d,f00e`
+- Choix du répertoire de base de stockage. param `-o`. Ex: `-o /path/to/rec`
 - Le nommage des fichiers est basé sur le serviceId plutôt que le serviceLabel.
-- type d'arborescence
-  - /home/rec/0xf00d/0xf00d.pcm
-  - /home/rec/0xf00d/0xf00d.ndjson
-  - /home/rec/0xf00d/0xf00d-timestamp.jpg|png
+- type d'arborescence (f00d = serviceId en hexa)
+  - /path/to/rec/f00d/f00d.pcm
+  - /path/to/rec/f00d/f00d.ndjson
+  - /path/to/rec/f00d/f00d-timestamp.jpg|png
 
 ## Compilation
+
+RTL-SDR + AIRSPY activés
 
 ```
 cd welle.io
 mkdir build
 cd build
-cmake .. -DRTLSDR=1 -DBUILD_WELLE_IO=OFF -DBUILD_WELLE_CLI=ON
+cmake ..
 make
 sudo make install
 ```
@@ -57,10 +59,7 @@ Un service est caractérisé par :
 
 - serviceId: ex FEED
 - serviceLabel: ex RADIO LiFE
-
-- flux audio
-natif : aac 88 kbps stéréo 48 kHz 960 frames / sec
-décodé : wav pcm stéréo 16 bits 48 kHz
+- un flux audio HE-AAC (960 frames / sec), 88 à 128 kbps, stéréo, 48 kHz. Qu'on décodera en WAV PCM 16 bits stéréo 48 kHz
 
 - DLS (Dynamic Label Segment)
   128 octets, encodage utf-8
@@ -82,10 +81,10 @@ https://www.etsi.org/deliver/etsi_ts/101400_101499/101499/02.02.01_60/ts_101499v
 Création préalable des tubes nommés pour les services à capter. ex:
 
 ```
-mkfifo 0xf201/0xf201.pcm 0xf201/0xf201.ndjson
+mkfifo f201/f201.pcm f201/f201.ndjson
 ```
 
-Armer les captations
+Armer les captations (projet `radio-captation`)
 
 ```
 systemctl start captation@NWB_FIF
@@ -101,7 +100,7 @@ Démarrer la réception + décodage du multiplex avec welle-cli
 ex lire un tube nommé, alimenté en flux pcm, avec ffplay
 
 ```
-cat 0xf201.pcm | ffplay -f s16le -ar 48k -ac 2 -
+cat f201.pcm | ffplay -f s16le -ar 48k -ac 2 -
 ```
 
 ## Divers: visualiser les bibliothèques partagées utilisées par un binaire
@@ -114,7 +113,6 @@ welle-cli:
 	/usr/local/opt/librtlsdr/lib/librtlsdr.0.dylib (compatibility version 0.0.0, current version 0.6.0)
 	/usr/local/opt/fftw/lib/libfftw3f.3.dylib (compatibility version 10.0.0, current version 10.10.0)
 	/usr/local/opt/faad2/lib/libfaad.2.dylib (compatibility version 3.0.0, current version 3.0.0)
-	/usr/local/opt/mpg123/lib/libmpg123.0.dylib (compatibility version 48.0.0, current version 48.0.0)
 	/usr/lib/libc++.1.dylib (compatibility version 1.0.0, current version 1300.23.0)
 	/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1311.100.3)
 ```
@@ -128,7 +126,6 @@ $ ldd welle-cli
 	libfftw3f.so.3 => /lib/aarch64-linux-gnu/libfftw3f.so.3 (0x0000007faed19000)
 	libfaad.so.2 => /lib/aarch64-linux-gnu/libfaad.so.2 (0x0000007faeccb000)
 	libasound.so.2 => /lib/aarch64-linux-gnu/libasound.so.2 (0x0000007faebbe000)
-	libmpg123.so.0 => /lib/aarch64-linux-gnu/libmpg123.so.0 (0x0000007faeadd000)
 	libpthread.so.0 => /lib/aarch64-linux-gnu/libpthread.so.0 (0x0000007faeaac000)
 	libstdc++.so.6 => /lib/aarch64-linux-gnu/libstdc++.so.6 (0x0000007fae8d4000)
 	libm.so.6 => /lib/aarch64-linux-gnu/libm.so.6 (0x0000007fae829000)
