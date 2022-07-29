@@ -38,19 +38,19 @@ std::string trim(const std::string &s)
     return rtrim(ltrim(s));
 }
 
-vector<string> split (string s, string delimiter)
+vector<string> split(string s, string delimiter)
 {
     size_t pos_start = 0, pos_end, delim_len = delimiter.length();
     string token;
     vector<string> res;
 
-    while ((pos_end = s.find (delimiter, pos_start)) != string::npos) {
-        token = s.substr (pos_start, pos_end - pos_start);
+    while ((pos_end = s.find(delimiter, pos_start)) != string::npos) {
+        token = s.substr(pos_start, pos_end - pos_start);
         pos_start = pos_end + delim_len;
-        res.push_back (token);
+        res.push_back(token);
     }
 
-    res.push_back (s.substr (pos_start));
+    res.push_back(s.substr(pos_start));
     return res;
 }
 
@@ -71,13 +71,18 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
             (void)frameErrors;
         }
 
+        /**
+         * une nouvelle audio frame a été décodée en raw pcm
+         * à 48kHz, correspond à une durée 20ms. si stéréo et 16 bits: 1920 samples: 3840 octets
+         * on l'écrit dans le fichier .pcm
+         */
         virtual void onNewAudio(std::vector<int16_t>&& audioData, int sampleRate, const string& mode) override
         {
-            // un nouveau buffer audio pcm a été reçu, on l'écrit dans le fichier
+            //cout << "[" << hex << SId << dec << "] newAudio reçu - " << audioData.size() << " octets" << endl;
 
             string filename = filePrefix + ".pcm";
-            FILE *file = fopen(filename.c_str(),"ab");
-            fwrite(audioData.data(),sizeof(short),audioData.size(),file);
+            FILE *file = fopen(filename.c_str(), "ab");
+            fwrite(audioData.data(), sizeof(short), audioData.size(), file);
             fclose(file);
         }
 
@@ -114,13 +119,19 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
         virtual void onMOT(const mot_file_t& mot_file) override
         {
             string extension;
-            if (mot_file.content_sub_type == 0x01) {
-                extension = "jpg";
-            } else if (mot_file.content_sub_type == 0x03) {
-                extension = "png";
+            switch (mot_file.content_sub_type) {
+                case 0x01:
+                    extension = "jpg";
+                    break;
+                case 0x03:
+                    extension = "png";
+                    break;
+                default:
+                    cerr << "MOT:content_sub_type inconnu" << endl;
+                    return;
             }
 
-            ofstream file_mot, file_txt3;
+            ofstream file_mot, file_txt;
             unsigned long int timestamp = time(NULL);
 
             uint32_t current_mot_size = mot_file.data.size();
@@ -133,7 +144,7 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
 
             string filename_mot = filePrefix + "-" + std::to_string(timestamp) + "." + extension;
             string filename_txt = filePrefix + ".ndjson";
-            file_txt3.open(filename_txt, std::ios_base::app);
+            file_txt.open(filename_txt, std::ios_base::app);
 
             json j;
             j["mot"] = {
@@ -144,9 +155,9 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
                 {"ts", timestamp}
             };
             cout << j << endl;
-            file_txt3 << j << endl;
-	    file_txt3.flush();
-            file_txt3.close();
+            file_txt << j << endl;
+            file_txt.flush();
+            file_txt.close();
 
             // enregistrement de l'image MOT
             file_mot.open(filename_mot);
@@ -211,8 +222,8 @@ class RadioInterface : public RadioControllerInterface
         {
             serviceId = sId;
             stringstream _serviceIdStr;
-	    _serviceIdStr << hex << serviceId;
-	    serviceIdStr = _serviceIdStr.str();
+            _serviceIdStr << hex << serviceId;
+            serviceIdStr = _serviceIdStr.str();
 
             cout << "Nouveau service détecté: serviceId=" << _serviceIdStr.str() << endl;
         }
@@ -220,8 +231,8 @@ class RadioInterface : public RadioControllerInterface
         virtual void onNewEnsemble(uint16_t eId) override
         {
             ensembleId = eId;
-	    stringstream _ensembleIdStr;
-	    _ensembleIdStr << hex << ensembleId;
+            stringstream _ensembleIdStr;
+            _ensembleIdStr << hex << ensembleId;
             ensembleIdStr = _ensembleIdStr.str();
 
             cout << "Nouvel ensemble: ensembleId=" << _ensembleIdStr.str() << endl;
@@ -231,14 +242,14 @@ class RadioInterface : public RadioControllerInterface
         {
             ensembleLabel = label.utf8_label();
 
-	    json j;
-	    j["ensemble"] = {
+            json j;
+            j["ensemble"] = {
                 {"channel", channel},
-		{"frequency", frequency},
+                {"frequency", frequency},
                 {"ensembleId", ensembleIdStr},
                 {"ensembleLabel", ensembleLabel}
             };
-	    cout << j << endl;
+            cout << j << endl;
         }
 
         // le multiplex indique l'heure
@@ -318,11 +329,11 @@ class RadioInterface : public RadioControllerInterface
         FILE* fic_fd = nullptr;
 
         int serviceId = 0;
-	string serviceIdStr = "";
+        string serviceIdStr = "";
         string serviceLabel = "";
 
         int ensembleId = 0;
-	string ensembleIdStr = "";
+        string ensembleIdStr = "";
         string ensembleLabel = "";
 
         string channel = "";
@@ -424,7 +435,7 @@ int main(int argc, char **argv)
     cerr << "Liste des services trouvés :" << endl;
     // boucle des services
     for (const auto& s : rx.getServiceList()) {
-        cerr << "- [" << std::hex << s.serviceId << std::dec << "] " << s.serviceLabel.utf8_label() << endl;
+        cerr << "- [" << std::hex << s.serviceId << std::dec << "] " << s.serviceLabel.utf8_label();
 
         std::stringstream sstream;
         sstream << std::hex << s.serviceId;
@@ -437,8 +448,10 @@ int main(int argc, char **argv)
 
         // si filtrage par service
         if (!options.services.empty() && std::find(options.services.begin(), options.services.end(), service_id) == options.services.end()) {
-            cerr << " BYPASS" << endl;
+            cerr << " (BYPASS)" << endl;
             continue;
+        } else {
+            cerr << " (PROCCESSING)" << endl;
         }
 
         string dumpFilePrefix = options.dump_directory + "/" + sstream.str();
@@ -447,7 +460,7 @@ int main(int argc, char **argv)
         dumpFilePrefix.erase(std::find_if(dumpFilePrefix.rbegin(), dumpFilePrefix.rend(),
                     [](int ch) { return !std::isspace(ch); }).base(), dumpFilePrefix.end());
 
-        string filename_txt = dumpFilePrefix + ".main.ndjson";
+        string filename_txt = dumpFilePrefix + ".ndjson";
         unsigned long int timestamp = time(NULL);
 
         json je;
@@ -456,21 +469,20 @@ int main(int argc, char **argv)
             {"ensembleLabel", trim(ri.ensembleLabel)},
             {"channel", options.channel},
             {"frequency", freq},
-            {"ts", timestamp},
-	    {"debug", "debug"}
+            {"ts", timestamp}
         };
-	cout << je << endl;
-	std::ofstream file_txt2;
-	file_txt2.open(filename_txt, std::ios_base::app);
-	if (file_txt2.is_open()) {
-		cout << "écriture dans " << filename_txt << endl;
-        	file_txt2 << "coucou" << endl;
-		file_txt2 << je << endl;
-		file_txt2.flush();
-        	file_txt2.close();
-	} else {
-		cerr << "oups" << endl;
-	}
+        cout << je << endl;
+        ofstream file_txt;
+        file_txt.open(filename_txt, std::ios_base::app);
+        if (file_txt.is_open()) {
+            cout << "écriture dans " << filename_txt << endl;
+            file_txt << "coucou" << endl;
+            file_txt << je << endl;
+            file_txt.flush();
+            file_txt.close();
+        } else {
+            cerr << "oups" << endl;
+        }
 
         // boucle des composants
         for (const auto& sc : rx.getComponents(s)) {
@@ -491,19 +503,18 @@ int main(int argc, char **argv)
                 {"subCh", sub.subChId},
                 {"bitrate", sub.bitrate()},
                 {"startAddr", sub.startAddr},
-                {"ts", timestamp},
-		{"debug", "debug"}
+                {"ts", timestamp}
             };
-	    cout << js << endl;
-            file_txt2.open(filename_txt, std::ios_base::app);
-	    if (file_txt2.is_open()) {
-		    file_txt2 << "koukou" << endl;
-		    file_txt2 << js << endl;
-	    	    file_txt2.flush();
-	    	    file_txt2.close();
-	    } else {
-		    cerr << "oups" << endl;
-	    }
+            cout << js << endl;
+            file_txt.open(filename_txt, std::ios_base::app);
+            if (file_txt.is_open()) {
+                file_txt << "koukou" << endl;
+                file_txt << js << endl;
+                file_txt.flush();
+                file_txt.close();
+            } else {
+                cerr << "oups" << endl;
+            }
         }
         cerr << endl;
 
