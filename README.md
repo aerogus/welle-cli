@@ -19,6 +19,12 @@ Expérimentation de captation DAB+ avec clé rtl-sdr et welle.io.
 
 RTL-SDR + AIRSPY activés
 
+Dépendances Debian
+
+```
+sudo apt install cmake g++ librtlsdr-dev libfftw3-dev
+```
+
 ```
 cd welle.io
 mkdir build
