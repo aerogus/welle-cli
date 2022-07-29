@@ -37,45 +37,56 @@ if [[ ! -d "$REC_DIR" ]]; then
 fi
 
 echo "- Stockage:  $REC_DIR"
-echo "- Multiplex: $CHANNEL"
-echo "- Services:  $SERVICES"
+echo "- Block: $BLOCK"
+echo "- Services:  $SERVICE_IDS"
 
 # en interne, les servicesId sont en minuscules
-SERVICES=$(echo "$SERVICES" | tr '[:upper:]' '[:lower:]')
-SERVICES_LIST=$(echo "$SERVICES" | tr "," "\n")
-EXTENSIONS=(pcm main.ndjson ndjson)
+SERVICE_IDS=$(echo "$SERVICE_IDS" | tr '[:upper:]' '[:lower:]')
+SERVICE_IDS_ARRAY=$(echo "$SERVICE_IDS" | tr "," "\n")
+EXTENSIONS=(pcm ndjson)
 
 # Création des tubes nommés pour les services à capter
-for SERVICE in $SERVICES_LIST
+for SERVICE_ID in $SERVICE_IDS_ARRAY
 do
-    SERVICE_DIR="${REC_DIR}/${SERVICE}"
+    SERVICE_DIR="${REC_DIR}/${SERVICE_ID}"
     if [[ ! -d "$SERVICE_DIR" ]]; then
         mkdir -p "$SERVICE_DIR"
     fi
-    FILE_PREFIX="${SERVICE_DIR}/${SERVICE}"
+    FILE_PREFIX="${SERVICE_DIR}/${SERVICE_ID}"
     for EXTENSION in "${EXTENSIONS[@]}"
     do
         # ne pas effacer le tube nommé tout le temps ...
         # impossible d'armer à l'avance sinon
         FILENAME="${FILE_PREFIX}.${EXTENSION}"
+
+        > "$FILENAME"
+
+        continue # bypass
+
         if [[ -f "$FILENAME" ]]; then
              echo "ERREUR: $FILENAME doit être un tube nommé"
-	     exit 1
-	fi
+             exit 1
+        fi
         if [[ ! -p "$FILENAME" ]]; then
-	    echo "- Création du tube nommé $FILENAME"
-	    mkfifo "$FILENAME"
+            echo "- Création du tube nommé $FILENAME"
+            mkfifo "$FILENAME"
         else
             echo "- Tube nommé $FILENAME déjà existant"
         fi
 
-	# simulation de lecture des flux (en background)
-        #echo "Lecture du tube nommé $FILENAME"
-        #"${ABS_PATH}/read-pipe.sh" "${FILENAME}" &
+        # simulation de lecture des flux (en background)
+        # echo "Lecture du tube nommé $FILENAME"
+        # "${ABS_PATH}/read-pipe.sh" "${FILENAME}" &
     done
 done
 
 echo "- Lancement de welle-cli"
 echo "---"
-"$WELLE_CLI_BIN" -c "$CHANNEL" -s "$SERVICES" -o "$REC_DIR" 2>&1
+"$WELLE_CLI_BIN" -c "$BLOCK" -s "$SERVICE_IDS" -o "$REC_DIR" 2>&1
 
+echo "ménage fichiers captés"
+for SERVICE_ID in $SERVICE_IDS_ARRAY
+do
+    SERVICE_DIR="${REC_DIR}/${SERVICE_ID}"
+    rm "${SERVICE_DIR}"/*.*
+done

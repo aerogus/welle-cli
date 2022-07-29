@@ -6,9 +6,9 @@
 REC_DIR="/path/to/data"
 
 # Canal et service(s) du multiplex à capter
-# Services séparés par une virgule. si vide = tous les services du mux
-CHANNEL="5A"
-SERVICES="F00D,F00E"
+# Services séparés par une virgule.
+BLOCK="5A"
+SERVICE_IDS="F00D,F00E"
 
 # Canaux DAB+ actifs à Paris - Juillet 2022:
 
