@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
-
-# compile
+##
+# Compilation welle-cli
+##
 
 declare -r ABS_PATH="$( cd "$(dirname "$0")" || return; pwd -P )"
 
 BUILD_DIR="$ABS_PATH/build"
 
+# ménage compilation précédente
 if [[ -d "$BUILD_DIR" ]] ; then
   rm -Rf "$BUILD_DIR"
 fi

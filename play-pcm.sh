@@ -6,6 +6,7 @@
 # Usage: ./play-pcm.sh audio.pcm
 ##
 
+# paramètres pour ffplay
 FORMAT="s16le"
 SAMPLING_RATE="48k"
 CHANNELS="2"

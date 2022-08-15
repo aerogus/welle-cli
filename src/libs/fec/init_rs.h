@@ -89,9 +89,9 @@
     /* Multiply rs->genpoly[] by  @**(root + x) */
     for (j = i; j > 0; j--){
       if (rs->genpoly[j] != 0)
-	rs->genpoly[j] = rs->genpoly[j-1] ^ rs->alpha_to[modnn(rs,rs->index_of[rs->genpoly[j]] + root)];
+        rs->genpoly[j] = rs->genpoly[j-1] ^ rs->alpha_to[modnn(rs,rs->index_of[rs->genpoly[j]] + root)];
       else
-	rs->genpoly[j] = rs->genpoly[j-1];
+        rs->genpoly[j] = rs->genpoly[j-1];
     }
     /* rs->genpoly[0] can never be zero */
     rs->genpoly[0] = rs->alpha_to[modnn(rs,rs->index_of[rs->genpoly[0]] + root)];
@@ -99,6 +99,6 @@
   /* convert rs->genpoly[] to index form for quicker encoding */
   for (i = 0; i <= nroots; i++)
     rs->genpoly[i] = rs->index_of[rs->genpoly[i]];
- done:;
+  done:;
 
 }

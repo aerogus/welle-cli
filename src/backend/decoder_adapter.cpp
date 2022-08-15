@@ -105,7 +105,7 @@ void DecoderAdapter::PutAudio(const uint8_t *data, size_t len)
             audio[i] = sample;
         }
         else {
-        	// upmix to stereo
+            // upmix to stereo
             audio[i*2] = sample;
             audio[i*2+1] = sample;
         }

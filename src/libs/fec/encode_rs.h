@@ -7,8 +7,8 @@
  * data_t parity[] - an array of NROOTS and type data_t to be written with parity symbols
  * NROOTS - the number of roots in the RS code generator polynomial,
  *          which is the same as the number of parity symbols in a block.
-            Integer variable or literal.
-	    * 
+ *          Integer variable or literal.
+ *
  * NN - the total number of symbols in a RS block. Integer variable or literal.
  * PAD - the number of pad symbols in a block. Integer variable or literal.
  * ALPHA_TO - The address of an array of NN elements to convert Galois field

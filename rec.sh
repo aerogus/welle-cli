@@ -37,7 +37,7 @@ if [[ ! -d "$REC_DIR" ]]; then
 fi
 
 echo "- Stockage:  $REC_DIR"
-echo "- Block: $BLOCK"
+echo "- Block:     $BLOCK"
 echo "- Services:  $SERVICE_IDS"
 
 # en interne, les servicesId sont en minuscules
@@ -50,8 +50,10 @@ for SERVICE_ID in $SERVICE_IDS_ARRAY
 do
     SERVICE_DIR="${REC_DIR}/${SERVICE_ID}"
     if [[ ! -d "$SERVICE_DIR" ]]; then
+        echo "- création répertoire $SERVICE_DIR"
         mkdir -p "$SERVICE_DIR"
     fi
+
     FILE_PREFIX="${SERVICE_DIR}/${SERVICE_ID}"
     for EXTENSION in "${EXTENSIONS[@]}"
     do
@@ -59,15 +61,12 @@ do
         # impossible d'armer à l'avance sinon
         FILENAME="${FILE_PREFIX}.${EXTENSION}"
 
-        > "$FILENAME"
-
-        continue # bypass
-
         if [[ -f "$FILENAME" ]]; then
-             echo "ERREUR: $FILENAME doit être un tube nommé"
-             exit 1
+             rm "$FILENAME"
+             echo "Effacement du fichier régulier $FILENAME"
         fi
-        if [[ ! -p "$FILENAME" ]]; then
+
+	if [[ ! -p "$FILENAME" ]]; then
             echo "- Création du tube nommé $FILENAME"
             mkfifo "$FILENAME"
         else
@@ -80,13 +79,15 @@ do
     done
 done
 
+echo "Avez vous bien armé les captations pour tous les services demandés ? (O/N)"
+read CONFIRM
+
+if [[ $CONFIRM != "O" ]]; then
+  echo "Arrêt"
+  exit 0
+fi
+
 echo "- Lancement de welle-cli"
 echo "---"
 "$WELLE_CLI_BIN" -c "$BLOCK" -s "$SERVICE_IDS" -o "$REC_DIR" 2>&1
 
-echo "ménage fichiers captés"
-for SERVICE_ID in $SERVICE_IDS_ARRAY
-do
-    SERVICE_DIR="${REC_DIR}/${SERVICE_ID}"
-    rm "${SERVICE_DIR}"/*.*
-done

@@ -465,7 +465,7 @@ int main(int argc, char **argv)
 
         json je;
         je["ensemble"] = {
-            {"emsembleId", ri.ensembleIdStr},
+            {"ensembleId", ri.ensembleIdStr},
             {"ensembleLabel", trim(ri.ensembleLabel)},
             {"channel", options.channel},
             {"frequency", freq},
@@ -476,12 +476,11 @@ int main(int argc, char **argv)
         file_txt.open(filename_txt, std::ios_base::app);
         if (file_txt.is_open()) {
             cout << "écriture dans " << filename_txt << endl;
-            file_txt << "coucou" << endl;
             file_txt << je << endl;
             file_txt.flush();
             file_txt.close();
         } else {
-            cerr << "oups" << endl;
+            cerr << "ERREUR: " << filename_txt << " impossible à ouvrir" << endl;
         }
 
         // boucle des composants
@@ -508,12 +507,11 @@ int main(int argc, char **argv)
             cout << js << endl;
             file_txt.open(filename_txt, std::ios_base::app);
             if (file_txt.is_open()) {
-                file_txt << "koukou" << endl;
                 file_txt << js << endl;
                 file_txt.flush();
                 file_txt.close();
             } else {
-                cerr << "oups" << endl;
+                cerr << "ERREUR: " << filename_txt << " impossible à ouvrir" << endl;
             }
         }
         cerr << endl;
