@@ -527,11 +527,7 @@ int main(int argc, char **argv)
     }
 
     while (true) {
-        cerr << "**** Enter '.' to quit." << endl;
-        cin >> service_to_tune;
-        if (service_to_tune == ".") {
-            break;
-        }
+        // main loop
     }
 
     return 0;
