@@ -54,6 +54,13 @@ do
         mkdir -p "$SERVICE_DIR"
     fi
 
+    # ménage données .msc (données associées brutes avant décodage)
+    MSC_FILENAME=="${FILE_PREFIX}.msc"
+    if [[ -f "$MSC_FILENAME" ]]; then
+        rm "$MSC_FILENAME"
+        echo "Effacement du fichier .msc $MSC_FILENAME"
+    fi
+
     FILE_PREFIX="${SERVICE_DIR}/${SERVICE_ID}"
     for EXTENSION in "${EXTENSIONS[@]}"
     do
