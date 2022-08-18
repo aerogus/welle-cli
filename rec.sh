@@ -10,6 +10,7 @@ declare -r ABS_PATH="$( cd "$(dirname "$0")" || return; pwd -P )"
 declare -r DEFAULT_CONF_FILE="$ABS_PATH/conf/captation.ini"
 declare -r WELLE_CLI_BIN="/usr/local/bin/welle-cli"
 declare -r CUSTOM_CONF_FILE="$1"
+declare -r AUTOSTART="$2"
 
 if [[ $CUSTOM_CONF_FILE ]]; then
     if [[ ! -f "$CUSTOM_CONF_FILE" ]]; then
@@ -86,12 +87,13 @@ do
     done
 done
 
-echo "Avez vous bien armé les captations pour tous les services demandés ? (O/N)"
-read CONFIRM
-
-if [[ $CONFIRM != "O" ]]; then
-  echo "Arrêt"
-  exit 0
+if [[ -z $AUTOSTART ]]; then
+    echo "Avez vous bien armé les captations pour tous les services demandés ? (o/N)"
+    read CONFIRM
+    if [[ $CONFIRM != "O" ]] && [[ $CONFIRM != "o" ]]; then
+        echo "Arrêt"
+        exit 0
+    fi
 fi
 
 echo "- Lancement de welle-cli"
