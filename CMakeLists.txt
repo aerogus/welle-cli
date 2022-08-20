@@ -11,7 +11,6 @@ set(CMAKE_CXX_STANDARD 14)
 
 option(BUILD_WELLE_CLI "Build welle-cli"                  ON )
 option(PROFILING       "Enable profiling (see README.md)" OFF)
-option(AIRSPY          "Compile with Airspy support"      OFF)
 option(RTLSDR          "Compile with RTL-SDR support"     ON )
 
 add_definitions(-Wall)
@@ -47,10 +46,6 @@ find_package(Faad REQUIRED)
 
 if (RTLSDR)
     find_package(LibRTLSDR REQUIRED)
-endif()
-
-if (AIRSPY)
-    find_package(LibAIRSPY REQUIRED)
 endif()
 
 include_directories(
@@ -111,11 +106,6 @@ if(LIBRTLSDR_FOUND)
     set(input_sources  ${input_sources} src/input/rtl_sdr.cpp)
 endif()
 
-if(LIBAIRSPY_FOUND)
-    add_definitions (-DHAVE_AIRSPY)
-    set(input_sources  ${input_sources} src/input/airspy_sdr.cpp)
-endif()
-
 STRING(TIMESTAMP BUILD_DATE "%s" UTC)
 add_definitions("-DBUILD_DATE=\"${BUILD_DATE}\"")
 
@@ -130,7 +120,6 @@ if(BUILD_WELLE_CLI)
 
     target_link_libraries (${cliExecutableName}
       ${LIBRTLSDR_LIBRARIES}
-      ${LIBAIRSPY_LIBRARIES}
       ${FFTW3F_LIBRARIES}
       ${FAAD_LIBRARIES}
       Threads::Threads
