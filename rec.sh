@@ -11,6 +11,10 @@ declare -r DEFAULT_CONF_FILE="$ABS_PATH/conf/captation.ini"
 declare -r WELLE_CLI_BIN="/usr/local/bin/welle-cli"
 declare -r CUSTOM_CONF_FILE="$1"
 declare -r AUTOSTART="$2"
+declare -ri SIMU=0
+
+echo "- Autostart: $AUTOSTART"
+echo "- Simu:      $SIMU"
 
 if [[ $CUSTOM_CONF_FILE ]]; then
     if [[ ! -f "$CUSTOM_CONF_FILE" ]]; then
@@ -46,6 +50,17 @@ SERVICE_IDS=$(echo "$SERVICE_IDS" | tr '[:upper:]' '[:lower:]')
 SERVICE_IDS_ARRAY=$(echo "$SERVICE_IDS" | tr "," "\n")
 EXTENSIONS=(pcm ndjson)
 
+# Ménage d'anciennes éventuelles de read-pipe.sh
+if [[ $SIMU -gt 0 ]]; then
+    PREVIOUS_PIDS=$(ps | grep read-pipe.sh | grep -v grep | awk '{print $1}';)
+    if [[ "$PREVIOUS_PIDS" ]]; then
+        echo "Termine (SIGTERM) les processus read-pipe.sh suivants : $PREVIOUS_PIDS"
+        kill -15 $PREVIOUS_PIDS
+    else
+        echo "aucun processus read-pipe.sh à terminer"
+    fi
+fi
+
 # Création des tubes nommés pour les services à capter
 for SERVICE_ID in $SERVICE_IDS_ARRAY
 do
@@ -74,7 +89,7 @@ do
              echo "Effacement du fichier régulier $FILENAME"
         fi
 
-	if [[ ! -p "$FILENAME" ]]; then
+        if [[ ! -p "$FILENAME" ]]; then
             echo "- Création du tube nommé $FILENAME"
             mkfifo "$FILENAME"
         else
@@ -82,18 +97,22 @@ do
         fi
 
         # simulation de lecture des flux (en background)
-        # echo "Lecture du tube nommé $FILENAME"
-        # "${ABS_PATH}/read-pipe.sh" "${FILENAME}" &
+        if [[ $SIMU -gt 0 ]]; then
+            echo "Simulation de lecture du tube nommé $FILENAME"
+            "${ABS_PATH}/read-pipe.sh" "${FILENAME}" &
+        fi
     done
 done
 
-if [[ -z $AUTOSTART ]]; then
+if [[ -z "$AUTOSTART" ]] && [[ $SIMU -eq 0 ]]; then
     echo "Avez vous bien armé les captations pour tous les services demandés ? (o/N)"
-    read CONFIRM
+    read -r CONFIRM
     if [[ $CONFIRM != "O" ]] && [[ $CONFIRM != "o" ]]; then
         echo "Arrêt"
         exit 0
     fi
+else
+    echo "Démarrage automatique"
 fi
 
 echo "- Lancement de welle-cli"
