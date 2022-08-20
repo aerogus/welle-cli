@@ -110,7 +110,6 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
                 {"ts", timestamp}
             };
             file << j << endl;
-            file.flush();
             file.close();
 
             cout << "[" << std::hex << SId << std::dec << "] " << j << endl;
@@ -156,7 +155,6 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
             };
             cout << j << endl;
             file_txt << j << endl;
-            file_txt.flush();
             file_txt.close();
 
             // enregistrement de l'image MOT
@@ -477,7 +475,6 @@ int main(int argc, char **argv)
         if (file_txt.is_open()) {
             cout << "écriture dans " << filename_txt << endl;
             file_txt << je << endl;
-            file_txt.flush();
             file_txt.close();
         } else {
             cerr << "ERREUR: " << filename_txt << " impossible à ouvrir" << endl;
@@ -508,7 +505,6 @@ int main(int argc, char **argv)
             file_txt.open(filename_txt, std::ios_base::app);
             if (file_txt.is_open()) {
                 file_txt << js << endl;
-                file_txt.flush();
                 file_txt.close();
             } else {
                 cerr << "ERREUR: " << filename_txt << " impossible à ouvrir" << endl;
