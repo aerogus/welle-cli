@@ -523,8 +523,8 @@ int main(int argc, char **argv)
 
     // main loop
     while (true) {
-	// ne pas laisser la boucle complètement vide, plante sous MacOS...
-	sleep(1);
+        // ne pas laisser la boucle complètement vide, plante sous MacOS...
+        cout << "";
     }
 
     return 0;
