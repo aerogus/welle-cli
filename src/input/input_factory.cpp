@@ -28,13 +28,6 @@
 
 #include <iostream>
 
-// For Qt translation if Qt is existing
-#ifdef QT_CORE_LIB
-    #include <QtGlobal>
-#else
-    #define QT_TRANSLATE_NOOP(x,y) (y)
-#endif
-
 #include "input_factory.h"
 #include "null_device.h"
 
@@ -62,9 +55,9 @@ CVirtualInput *CInputFactory::GetDevice(RadioControllerInterface& radioControlle
         std::string text;
 
         if (device == "auto")
-            text = QT_TRANSLATE_NOOP("CRadioController", "No valid device found use Null device instead.");
+            text = "No valid device found use Null device instead.";
         else
-            text = QT_TRANSLATE_NOOP("CRadioController", "Error while opening device");
+            text = "Error while opening device";
 
         radioController.onMessage(message_level_t::Error, text);
         InputDevice = new CNullDevice();
@@ -95,7 +88,7 @@ CVirtualInput *CInputFactory::GetDevice(RadioControllerInterface &radioControlle
 
     // Fallback if no device is found or an error occurred
     if (InputDevice == nullptr) {
-        std::string text = QT_TRANSLATE_NOOP("CRadioController", "Error while opening device");
+        std::string text = "Error while opening device";
         radioController.onMessage(message_level_t::Error, text);
         InputDevice = new CNullDevice();
     }
