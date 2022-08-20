@@ -405,7 +405,6 @@ int main(int argc, char **argv)
 
     auto freq = channels.getFrequency(options.channel);
     in->setFrequency(freq);
-    string service_to_tune = "";
 
     ri.frequency = std::to_string(freq);
     ri.channel = options.channel;
@@ -518,12 +517,14 @@ int main(int argc, char **argv)
         auto dumpFileName = dumpFilePrefix + ".msc";
 
         if (rx.addServiceToDecode(phs.at(s.serviceId), dumpFileName, s) == false) {
-            cerr << "Tune to " << service_to_tune << " failed" << endl;
+            cerr << "Tune " << s.serviceId << " failed" << endl;
         }
     }
 
+    // main loop
     while (true) {
-        // main loop
+	// ne pas laisser la boucle complètement vide, plante sous MacOS...
+	sleep(1);
     }
 
     return 0;
