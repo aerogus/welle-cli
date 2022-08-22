@@ -115,6 +115,7 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
             cout << "[" << std::hex << SId << std::dec << "] " << j << endl;
         }
 
+        // réception d'une image MOT
         virtual void onMOT(const mot_file_t& mot_file) override
         {
             string extension;
@@ -141,7 +142,17 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
             }
             last_size = current_mot_size;
 
+            // enregistrement de l'image MOT
             string filename_mot = filePrefix + "-" + std::to_string(timestamp) + "." + extension;
+            file_mot.open(filename_mot);
+            std::stringstream ss;
+            for (auto it = mot_file.data.begin(); it != mot_file.data.end(); it++) {
+                ss << *it;
+            }
+            file_mot << ss.str();
+            file_mot.close();
+
+            // enregistrement des metadata du MOT
             string filename_txt = filePrefix + ".ndjson";
             file_txt.open(filename_txt, std::ios_base::app);
 
@@ -156,15 +167,6 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
             cout << j << endl;
             file_txt << j << endl;
             file_txt.close();
-
-            // enregistrement de l'image MOT
-            file_mot.open(filename_mot);
-            std::stringstream ss;
-            for (auto it = mot_file.data.begin(); it != mot_file.data.end(); it++) {
-                ss << *it;
-            }
-            file_mot << ss.str();
-            file_mot.close();
 
             cout << "[" << std::hex << SId << std::dec << "] " << j << endl;
         }
