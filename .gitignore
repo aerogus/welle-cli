@@ -16,4 +16,5 @@ cmake_uninstall.cmake
 install_manifest.txt
 build
 conf/*.ini
-welle-cli.log
+!conf/default.dist.ini
+welle-cli*.log

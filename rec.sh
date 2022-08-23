@@ -7,7 +7,7 @@
 ##
 
 declare -r ABS_PATH="$( cd "$(dirname "$0")" || return; pwd -P )"
-declare -r DEFAULT_CONF_FILE="$ABS_PATH/conf/captation.ini"
+declare -r DEFAULT_CONF_FILE="$ABS_PATH/conf/default.ini"
 declare -r WELLE_CLI_BIN="/usr/local/bin/welle-cli"
 declare -r CUSTOM_CONF_FILE="$1"
 declare -r AUTOSTART="$2"
