@@ -1,19 +1,22 @@
-# welle.io modifié pour une captation linéaire du DAB+
+# welle.io modifié pour une captation de la radio DAB+
 
-Expérimentation de captation DAB+ avec clé rtl-sdr et welle.io.
+Expérimentation de captation liénaire de radio DAB+ avec clé rtl-sdr ou airspy et welle.io.
 
 **Ce projet est un fork, simplifié, de welle.io.**
 
-`welle-cli` issu du projet `welle.io` est intéressant mais demande quelques modifications pour répondre au besoin d'une captation linéaire multicanaux. Voici les modifs effectuées par rapport au projet d'origine :
+la commande `welle-cli`, issue du projet `welle.io`, est intéressante mais demande quelques modifications pour répondre au besoin d'une captation linéaire multicanaux. Voici les caractéristiques principales et modifications effectuées par rapport au projet d'origine :
 
 - Choix du canal du multiplex. param `-c`. Ex: `-c 5A`
-- Choix explicite du/des services à décoder. param `-s`. Saisir les serviceIds séparés par des virgules. Ex: `-s f00d,f00e`
+- Choix explicite du ou des services à décoder. param `-s`. Saisir les serviceIds séparés par des virgules. Ex: `-s f00d,f00e`
 - Choix du répertoire de base de stockage. param `-o`. Ex: `-o /path/to/rec`
 - Le nommage des fichiers est basé sur le serviceId plutôt que le serviceLabel.
+- Les flux audios sont enregistrés sous forme de fichier .pcm, raw sans header
+- Les flux de métadonnées sont enregistrés sous forme de new line delimited json, .ndjson
+- Les images MOT sont enregistrés avec leur extension d'origine, et un horodatage dans le nom du fichier
 - type d'arborescence (f00d = serviceId en hexa)
-  - /path/to/rec/f00d/f00d.pcm
-  - /path/to/rec/f00d/f00d.ndjson
-  - /path/to/rec/f00d/f00d-timestamp.jpg|png
+  - /path/to/rec/$serviceId/$serviceId.pcm
+  - /path/to/rec/$serviceId/$serviceId.ndjson
+  - /path/to/rec/$serviceId/$serviceId-$timestamp-MOT.[jpg|png]
 
 ## Compilation
 
@@ -32,6 +35,14 @@ cd build
 cmake ..
 make
 sudo make install
+```
+
+## Sous MacOS
+
+dépendances
+
+```
+brew install cmake mpg123 fftw librtlsdr
 ```
 
 ## Contenu d'un multiplex DAB+
@@ -67,43 +78,74 @@ Un service est caractérisé par :
 - serviceLabel: ex RADIO LiFE
 - un flux audio HE-AAC (960 frames / sec), 88 à 128 kbps, stéréo, 48 kHz. Qu'on décodera en WAV PCM 16 bits stéréo 48 kHz
 
-- DLS (Dynamic Label Segment)
-  128 octets, encodage utf-8
+- DLS (Dynamic Label Segment) : 128 octets, encodage utf-8
+  
 The dynamic label feature provides short textual messages which are associated with audio programme content for
 display on receivers. The messages can have any length up to a maximum of 128 bytes; depending on the character set
 used, the message can have up to 128 characters. 
 https://www.etsi.org/deliver/etsi_en/300400_300499/300401/02.01.01_60/en_300401v020101p.pdf
 
 - MOT Slideshow (image)
-  Multimedia Object Transfer
-  JPEG ou PNG 320x240 (ou +)
-  ClickThroughURL (512 octets)
+
+Multimedia Object Transfer, JPEG ou PNG 320x240 (ou +), ClickThroughURL (512 octets)
 
 https://www.etsi.org/deliver/etsi_ts/101400_101499/101499/02.02.01_60/ts_101499v020201p.pdf
 
+## Démarrage d'une captation
 
-## Démarrage captation
-
-Création préalable des tubes nommés pour les services à capter. ex:
-
-```
-mkfifo f201/f201.pcm f201/f201.ndjson
-```
-
-Armer les captations (projet `radio-captation`)
+Dans le répertoire `conf`, créer un profil, ex le fichier `5A.ini` avec un contenu de ce type :
 
 ```
-systemctl start captation@NWB_FIF
-systemctl start captation-dab@NWB_FIF
-````
-
-Démarrer la réception + décodage du multiplex avec welle-cli
-
-```
-./rec.sh
+REC_DIR="/Users/gus/dab"
+BLOCK="5A"
+SERVICE_IDS="F00D,F00E"
 ```
 
-ex lire un tube nommé, alimenté en flux pcm, avec ffplay
+Le script `rec.sh` fait utilisation des tubes nommés. `welle-cli` va écrire dans ces tubes (2 par service), mais une application à l'autre bout doit être à l'écoute
+de l'ensemble de ces tubes sous risque de buffer full. Aussi il vous faut armer ces écouteurs avant de lancer `welle-cli`.
+Le script `read-pipe.sh` rudimentaire peut servir de simulation d'écoute de ces tubes.
+
+```
+./read-pipe.sh /Users/gus/dab/f00d/f00d.pcm
+./read-pipe.sh /Users/gus/dab/f00d/f00d.ndjson
+./read-pipe.sh /Users/gus/dab/f00e/f00e.pcm
+./read-pipe.sh /Users/gus/dab/f00e/f00e.ndjson
+```
+
+Utilisons maintenant le script `rec.sh` qui fait quelques vérifications (et créations des tubes nommés) avant de lancer la commande `welle-cli`.
+
+exécutez la commande suivante
+
+```
+% ./rec.sh ./conf/5A.ini
+- Autostart:
+- Simu:      0
+- Config:    ./conf/5A.ini
+- Stockage:  /Users/gus/dab
+- Block:     5A
+- Services:  F00D,F00E
+- création répertoire /Users/gus/dab/f00d
+- Création du tube nommé /Users/gus/dab/f00d/f00d.pcm
+- Création du tube nommé /Users/gus/dab/f00d/f00d.ndjson
+- création répertoire /Users/gus/dab/f00e
+- Création du tube nommé /Users/gus/dab/f00e/f00e.pcm
+- Création du tube nommé /Users/gus/dab/f00e/f00e.ndjson
+Avez vous bien armé les captations pour tous les services demandés ? (o/N)
+o
+- Lancement de welle-cli
+---
+InputFactory:Input device:auto
+RTL_SDR: Open rtl-sdr
+...
+```
+
+la synchronisation se fait et l'alimentation des tubes nommés débute (ainsi que l'écriture des fichiers MOT).
+Ctrl+C pour couper.
+
+
+## Utile
+
+lire un tube nommé, alimenté en flux pcm, avec ffplay
 
 ```
 cat f201.pcm | ffplay -f s16le -ar 48k -ac 2 -
@@ -142,3 +184,9 @@ $ ldd welle-cli
 	libdl.so.2 => /lib/aarch64-linux-gnu/libdl.so.2 (0x0000007fae64f000)
 	libudev.so.1 => /lib/aarch64-linux-gnu/libudev.so.1 (0x0000007fae618000)
 ```
+
+## Ressources
+
+- https://github.com/aerogus/welle-cli
+- https://aerogus.net/posts/radio-dab-welle-cli/
+- https://aerogus.net/posts/enregistrer-multiplex-radio-dab/
