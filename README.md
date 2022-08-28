@@ -10,23 +10,32 @@ la commande `welle-cli`, issue du projet `welle.io`, est intéressante mais dema
 - Choix explicite du ou des services à décoder. param `-s`. Saisir les serviceIds séparés par des virgules. Ex: `-s f00d,f00e`
 - Choix du répertoire de base de stockage. param `-o`. Ex: `-o /path/to/rec`
 - Le nommage des fichiers est basé sur le serviceId plutôt que le serviceLabel.
-- Les flux audios sont enregistrés sous forme de fichier .pcm, raw sans header
+- Les flux audios sont enregistrés sous forme de fichier .pcm (raw sans header, 48kHz, stéreo, 16 bits)
 - Les flux de métadonnées sont enregistrés sous forme de new line delimited json, .ndjson
 - Les images MOT sont enregistrés avec leur extension d'origine, et un horodatage dans le nom du fichier
-- type d'arborescence (f00d = serviceId en hexa)
+- Arborescence (f00d = serviceId en hexa)
   - /path/to/rec/$serviceId/$serviceId.pcm
   - /path/to/rec/$serviceId/$serviceId.ndjson
   - /path/to/rec/$serviceId/$serviceId-$timestamp-MOT.[jpg|png]
+- Possibilité d'utiliser plusieurs clés sdr pour enregistrer plusieurs multiplex en parallèle (testé avec 2)
 
-## Compilation
+## Installation
 
 RTL-SDR activé
 
-Dépendances Debian
+### Dépendances sous Debian
 
 ```
 sudo apt install cmake g++ librtlsdr-dev libfftw3-dev
 ```
+
+### Dépendances sous MacOS
+
+```
+brew install cmake mpg123 fftw librtlsdr
+```
+
+### Compilation
 
 ```
 cd welle.io
@@ -35,14 +44,6 @@ cd build
 cmake ..
 make
 sudo make install
-```
-
-## Sous MacOS
-
-dépendances
-
-```
-brew install cmake mpg123 fftw librtlsdr
 ```
 
 ## Contenu d'un multiplex DAB+
@@ -101,9 +102,9 @@ BLOCK="5A"
 SERVICE_IDS="F00D,F00E"
 ```
 
-Le script `rec.sh` fait utilisation des tubes nommés. `welle-cli` va écrire dans ces tubes (2 par service), mais une application à l'autre bout doit être à l'écoute
-de l'ensemble de ces tubes sous risque de buffer full. Aussi il vous faut armer ces écouteurs avant de lancer `welle-cli`.
-Le script `read-pipe.sh` rudimentaire peut servir de simulation d'écoute de ces tubes.
+Le script `rec.sh` fait utilisation des tubes nommés. `welle-cli` va écrire dans ces tubes (2 par service), mais une application à l'autre bout doit être à l'écoute de l'ensemble de ces tubes sous risque de remplissage du buffer. Aussi il vous faut armer ces écouteurs avant de lancer `welle-cli`.
+
+Le script `read-pipe.sh` rudimentaire peut servir de simulation d'écoute de ces tubes. On peut exécuter en parallèle ces différentes commmandes :
 
 ```
 ./read-pipe.sh /Users/gus/dab/f00d/f00d.pcm
@@ -112,9 +113,7 @@ Le script `read-pipe.sh` rudimentaire peut servir de simulation d'écoute de ces
 ./read-pipe.sh /Users/gus/dab/f00e/f00e.ndjson
 ```
 
-Utilisons maintenant le script `rec.sh` qui fait quelques vérifications (et créations des tubes nommés) avant de lancer la commande `welle-cli`.
-
-exécutez la commande suivante
+Exécutons maintenant `rec.sh` qui fait quelques vérifications (et créations des tubes nommés) avant de lancer réellement la commande `welle-cli`.
 
 ```
 % ./rec.sh ./conf/5A.ini
@@ -139,9 +138,7 @@ RTL_SDR: Open rtl-sdr
 ...
 ```
 
-la synchronisation se fait et l'alimentation des tubes nommés débute (ainsi que l'écriture des fichiers MOT).
-Ctrl+C pour couper.
-
+la synchronisation se fait et l'alimentation des tubes nommés débute (ainsi que l'écriture des fichiers MOT). `Ctrl+C` pour arrêter la captation.
 
 ## Utile
 
@@ -187,6 +184,7 @@ $ ldd welle-cli
 
 ## Ressources
 
-- https://github.com/aerogus/welle-cli
+- https://aerogus.net/posts/diffuser-tele-radio-reseau-local/#radio-dab-plus
 - https://aerogus.net/posts/radio-dab-welle-cli/
 - https://aerogus.net/posts/enregistrer-multiplex-radio-dab/
+- https://github.com/aerogus/welle-cli
