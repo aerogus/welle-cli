@@ -119,7 +119,7 @@ fi
 # cleanup old log file for this block
 if [[ -f "${LOG_PATH}/welle-cli-${BLOCK}.log" ]]; then
     echo "- remove logs for block $BLOCK"
-    rm "${LOG_PATH}/welle-cli-${BLOCK}.log"
+    true > "${LOG_PATH}/welle-cli-${BLOCK}.log"
 fi
 
 echo "- welle-cli launch"
