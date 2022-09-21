@@ -142,7 +142,7 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
                 j["motBypass"] = {
                     {"msg", "duplicate"},
                     {"size", last_size},
-                    {"serviceId", SId}
+                    {"serviceId", serviceIdStr}
                 };
 
                 cout << j << endl;
@@ -170,7 +170,7 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
                 {"content_name", mot_file.content_name},
                 {"click_through_url", mot_file.click_through_url},
                 {"category_title", mot_file.category_title},
-                {"serviceId", SId},
+                {"serviceId", serviceIdStr},
                 {"ts", timestamp}
             };
             cout << j << endl;
@@ -186,7 +186,8 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
             j["padError"] = {
                 {"msg", "X-PAD length mismatch"},
                 {"expected", announced_xpad_len},
-                {"got", xpad_len}
+                {"got", xpad_len},
+                {"ts", timestamp}
             };
 
             cout << j << endl;
