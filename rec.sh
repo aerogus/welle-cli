@@ -8,6 +8,7 @@
 
 declare -r ABS_PATH="$( cd "$(dirname "$0")" || return; pwd -P )"
 declare -r DEFAULT_CONF_FILE="$ABS_PATH/conf/default.ini"
+declare -r LOG_PATH="$ABS_PATH/log"
 declare -r WELLE_CLI_BIN="/usr/local/bin/welle-cli"
 declare -r CUSTOM_CONF_FILE="$1"
 declare -r AUTOSTART="$2"
@@ -113,6 +114,12 @@ if [[ -z "$AUTOSTART" ]] && [[ $SIMU -eq 0 ]]; then
     fi
 else
     echo "Automatic launch"
+fi
+
+# cleanup old log file for this block
+if [[ -f "${LOG_PATH}/welle-cli-${BLOCK}.log" ]]; then
+    echo "- remove logs for block $BLOCK"
+    rm "${LOG_PATH}/welle-cli-${BLOCK}.log"
 fi
 
 echo "- welle-cli launch"
