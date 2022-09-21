@@ -21,6 +21,8 @@ using namespace nlohmann;
 
 const std::string WHITESPACE = " \n\r\t\f\v";
 
+const bool DEBUG = false;
+
 std::string ltrim(const std::string &s)
 {
     size_t start = s.find_first_not_of(WHITESPACE);
@@ -88,10 +90,15 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
             j["newAudio"] = {
                 "size", audioData.size(), // in bytes
                 "sampleRate", sampleRate,
-                "ts", timestamp,
+                "mode", mode,
+                "serviceId", serviceIdStr,
+                "ts", timestamp
             };
 
-            cout << j << endl;
+            // very verbose
+            if (DEBUG) {
+                cout << j << endl;
+            }
 
             string filename = filePrefix + ".pcm";
             FILE *file = fopen(filename.c_str(), "ab");
@@ -200,6 +207,7 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
                 {"msg", "X-PAD length mismatch"},
                 {"expected", announced_xpad_len},
                 {"got", xpad_len},
+                {"serviceId", serviceIdStr},
                 {"ts", timestamp}
             };
 
