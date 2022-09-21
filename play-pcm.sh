@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
 
 ##
-# Joue un stream PCM
+# play a PCM stream
 #
 # Usage: ./play-pcm.sh audio.pcm
 ##
 
-# paramètres pour ffplay
+# ffplay arguments
 FORMAT="s16le"
 SAMPLING_RATE="48k"
 CHANNELS="2"
 
 if [[ ! -f $1 ]] && [[ ! -p $1 ]]; then
-  "fichier ou tube nommé $1 non trouvé"
+  "file or named pipe $1 not found"
   exit 1
 fi
 
-cat "$1" | ffplay -f $FORMAT -ar $SAMPLING_RATE -ac $CHANNELS -
+ffplay -f $FORMAT -ar $SAMPLING_RATE -ac $CHANNELS - < "$1"

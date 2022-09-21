@@ -1,35 +1,51 @@
-# welle.io modifié pour une captation de la radio DAB+
+# Forked welle.io for DAB+ linear recording
 
-Expérimentation de captation liénaire de radio DAB+ avec clé rtl-sdr ou airspy et welle.io.
+This project is a simplified fork of [welle.io](https://github.com/AlbrechtL/welle.io)
 
-**Ce projet est un fork, simplifié, de welle.io.**
+## Goals
 
-la commande `welle-cli`, issue du projet `welle.io`, est intéressante mais demande quelques modifications pour répondre au besoin d'une captation linéaire multicanaux. Voici les caractéristiques principales et modifications effectuées par rapport au projet d'origine :
+- Learn the official `welle.io` codebase
+- Learn how a `DAB+` mux works
+- Be focus only on the `cli` tool and `rtl-sdr` support
+- Adapt the code to be able to record 24/7 a whole ensemble or only selected service(s)
+- Be able to extract audio stream (decoded PCM and native AAC) + DLS + MOT
+- if people are interested in these specific features, propose back some patchs ans pull requests to the official [welle.io project](https://github.com/AlbrechtL/welle.io/issues/657)
 
-- Choix du canal du multiplex. param `-c`. Ex: `-c 5A`
-- Choix explicite du ou des services à décoder. param `-s`. Saisir les serviceIds séparés par des virgules. Ex: `-s f00d,f00e`
-- Choix du répertoire de base de stockage. param `-o`. Ex: `-o /path/to/rec`
-- Le nommage des fichiers est basé sur le serviceId plutôt que le serviceLabel.
-- Les flux audios sont enregistrés sous forme de fichier .pcm (raw sans header, 48kHz, stéreo, 16 bits)
-- Les flux de métadonnées sont enregistrés sous forme de new line delimited json, .ndjson
-- Les images MOT sont enregistrés avec leur extension d'origine, et un horodatage dans le nom du fichier
-- Arborescence (f00d = serviceId en hexa)
-  - /path/to/rec/$serviceId/$serviceId.pcm
-  - /path/to/rec/$serviceId/$serviceId.ndjson
-  - /path/to/rec/$serviceId/$serviceId-$timestamp-MOT.[jpg|png]
-- Possibilité d'utiliser plusieurs clés sdr pour enregistrer plusieurs multiplex en parallèle (testé avec 2)
+## Why a fork ?
+
+`welle-cli` command from `welle.io` project is great but I didn't find a way to do some specific things:
+
+- How to selected some services out of an ensemble ?
+- How to specify a record path ?
+- How to extract the raw ACC stream ?
+- How to avoid aac -> PCM -> mp3 decoding/recoding ?
+
+So I began this fork. Of course with free GPL licence.
+
+## Differences / Usage
+
+- Choose a block. arg `-c`. ex: `-c 5A`
+- Choose the service(s) to decode. arg `-s` + serviceIds comma separated, ex: `-s f00d,f00e`
+- Choose base storage directory. arg `-o`. ex: `-o /path/to/rec`
+- Files name are bases on `serviceId` rather than `serviceLabel`.
+- Audio streams are decoded and recorded in .pcm file (raw without any header, 48kHz, stereo, 16 bits)
+- Metadata are stored in new line delimited json format (extension `.ndjson`)
+- MOT pictures are stored with their original extension (png ou jpg), with a timestamp in the file name
+- Tree structure (f00d = serviceId in hexa)
+  - /path/to/rec/`$serviceId`/`$serviceId`.pcm
+  - /path/to/rec/`$serviceId`/`$serviceId`.ndjson
+  - /path/to/rec/`$serviceId`/`$serviceId`-`$timestamp`-MOT.[`jpg|png`]
+- Ability to use several SDR keys to records more than one ensemble on a same machine (tested by 2)
 
 ## Installation
 
-RTL-SDR activé
-
-### Dépendances sous Debian
+### Debian
 
 ```
 sudo apt install cmake g++ librtlsdr-dev libfftw3-dev
 ```
 
-### Dépendances sous MacOS
+### MacOS
 
 ```
 brew install cmake mpg123 fftw librtlsdr
@@ -46,40 +62,38 @@ make
 sudo make install
 ```
 
-## Contenu d'un multiplex DAB+
+## About DAB+ ensemble
 
-Un multiplex DAB+, ou ensemble, est caractérisé par une fréquence centrale en MHz.
-La bande III VHF est divisée en blocs, ou canaux, de 1536 kHz de large.
+A DAB+ multiplex, or mux, or ensemble, is identified by a central frequency, in MHz
+BHF Band III is splitted in blocks, or channels width 1536 kHz bandwidth.
 
-À titre d'exemple Les blocs actuellement utilisés sur Paris sont les suivants :
+Paris current active blocks are the following :
 
-| Bloc | Fréquence   |
-| ---- | ----------- |
-|  5A  | 174.928 MHz |
-|  6A  | 181.936 MHz |
-|  6C  | 185.360 MHz |
-|  6D  | 187.072 MHz |
-|  8C  | 199.360 MHz |
-|  9A  | 202.928 MHz |
-|  9B  | 204.640 MHz |
-| 11A  | 216.928 MHz |
-| 11B  | 218.640 MHz |
+| Block | Frequency   | EnsembleLabel   |
+| ----- | ----------- | --------------- |
+|   5A  | 174.928 MHz | EXPE TDF TFL 5A |
+|   6A  | 181.936 MHz | PARIS 6A        |
+|   6C  | 185.360 MHz | towerCast-m1    |
+|   6D  | 187.072 MHz | PARIS 6D        |
+|   8C  | 199.360 MHz | towerCast-m2    |
+|   9A  | 202.928 MHz | RNT Associative |
+|   9B  | 204.640 MHz | PARIS 9B        |
+|  11A  | 216.928 MHz | PARIS 11A       |
+|  11B  | 218.640 MHz | Paris-Etendu    |
 
-source: https://fr.wikipedia.org/wiki/Bandes_de_fr%C3%A9quences_de_la_t%C3%A9l%C3%A9vision_terrestre
+An ensemble gather the following properties :
 
-Un ensemble a comme propriétés les informations suivantes :
+- `ensembleId` (ex: `F001`)
+- `ensembleLabel` (ex: `Paris-Etendu`)
+- A service list
 
-- ensembleId : ex F001
-- ensembleLabel: ex Paris-Etendu
-- une liste de service
+A service is caracterised by :
 
-Un service est caractérisé par :
+- `serviceId` (ex: `FEED`)
+- `serviceLabel` (ex: `RADIO LiFE`)
+- an audio stream (codec `HE-AAC`, 960 frames / sec), 88 à 128 kbps, mono or stereo, 48 kHz. We'll decode in WAV PCM 16 bits stéréo 48 kHz
 
-- serviceId: ex FEED
-- serviceLabel: ex RADIO LiFE
-- un flux audio HE-AAC (960 frames / sec), 88 à 128 kbps, stéréo, 48 kHz. Qu'on décodera en WAV PCM 16 bits stéréo 48 kHz
-
-- DLS (Dynamic Label Segment) : 128 octets, encodage utf-8
+- `DLS` (Dynamic Label Segment) : 128 bytes, utf-8 encodec
   
 The dynamic label feature provides short textual messages which are associated with audio programme content for
 display on receivers. The messages can have any length up to a maximum of 128 bytes; depending on the character set
@@ -92,9 +106,9 @@ Multimedia Object Transfer, JPEG ou PNG 320x240 (ou +), ClickThroughURL (512 oct
 
 https://www.etsi.org/deliver/etsi_ts/101400_101499/101499/02.02.01_60/ts_101499v020201p.pdf
 
-## Démarrage d'une captation
+## Launch a recording session
 
-Dans le répertoire `conf`, créer un profil, ex le fichier `5A.ini` avec un contenu de ce type :
+In the `conf` directory, create a profile, ex `5A.ini` file with this kind of content :
 
 ```
 REC_DIR="/Users/gus/dab"
@@ -102,9 +116,9 @@ BLOCK="5A"
 SERVICE_IDS="F00D,F00E"
 ```
 
-Le script `rec.sh` fait utilisation des tubes nommés. `welle-cli` va écrire dans ces tubes (2 par service), mais une application à l'autre bout doit être à l'écoute de l'ensemble de ces tubes sous risque de remplissage du buffer. Aussi il vous faut armer ces écouteurs avant de lancer `welle-cli`.
+`rec.sh` script uses named pipes. `welle-cli` will write into these pipes (2 for each service), but an application has to read these whole pipes at the other side, otherwise there will be a buffer overflow. So you have to arm these readers before launch `welle-cli`.
 
-Le script `read-pipe.sh` rudimentaire peut servir de simulation d'écoute de ces tubes. On peut exécuter en parallèle ces différentes commmandes :
+`read-pipe.sh` simple script could be used to read these pipes. We could launch in parallel these commands:
 
 ```
 ./read-pipe.sh /Users/gus/dab/f00d/f00d.pcm
@@ -113,44 +127,44 @@ Le script `read-pipe.sh` rudimentaire peut servir de simulation d'écoute de ces
 ./read-pipe.sh /Users/gus/dab/f00e/f00e.ndjson
 ```
 
-Exécutons maintenant `rec.sh` qui fait quelques vérifications (et créations des tubes nommés) avant de lancer réellement la commande `welle-cli`.
+Now execute `rec.sh` which do some checkes (and create named pipes) before the real `welle-cli` launch.
 
 ```
 % ./rec.sh ./conf/5A.ini
 - Autostart:
 - Simu:      0
 - Config:    ./conf/5A.ini
-- Stockage:  /Users/gus/dab
+- Storage:  /Users/gus/dab
 - Block:     5A
 - Services:  F00D,F00E
-- création répertoire /Users/gus/dab/f00d
-- Création du tube nommé /Users/gus/dab/f00d/f00d.pcm
-- Création du tube nommé /Users/gus/dab/f00d/f00d.ndjson
-- création répertoire /Users/gus/dab/f00e
-- Création du tube nommé /Users/gus/dab/f00e/f00e.pcm
-- Création du tube nommé /Users/gus/dab/f00e/f00e.ndjson
-Avez vous bien armé les captations pour tous les services demandés ? (o/N)
-o
-- Lancement de welle-cli
+- Create directory /Users/gus/dab/f00d
+- Create named pipe /Users/gus/dab/f00d/f00d.pcm
+- Create named pipe /Users/gus/dab/f00d/f00d.ndjson
+- create directory /Users/gus/dab/f00e
+- Create named pipe /Users/gus/dab/f00e/f00e.pcm
+- Create named pipe /Users/gus/dab/f00e/f00e.ndjson
+Did you arm all the recorders for selected services ? (y/N)
+y
+- welle-cli launch
 ---
 InputFactory:Input device:auto
 RTL_SDR: Open rtl-sdr
 ...
 ```
 
-la synchronisation se fait et l'alimentation des tubes nommés débute (ainsi que l'écriture des fichiers MOT). `Ctrl+C` pour arrêter la captation.
+Synchronisation is done and named pipes start to be written (so as the MOT files). You can stop the process with `Ctrl+C`.
 
-## Utile
+## Misc
 
-lire un tube nommé, alimenté en flux pcm, avec ffplay
+Read a named pipe, ingested by a raw pcm stream, with ffplay
 
 ```
 cat f201.pcm | ffplay -f s16le -ar 48k -ac 2 -
 ```
 
-## Divers: visualiser les bibliothèques partagées utilisées par un binaire
+## Visualize shared libraries for a binary
 
-### sous MacOS
+### MacOS
 
 ```
 $ otool -L welle-cli
@@ -162,7 +176,7 @@ welle-cli:
 	/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1311.100.3)
 ```
 
-### sous Linux
+### Linux
 
 ```
 $ ldd welle-cli
@@ -188,3 +202,5 @@ $ ldd welle-cli
 - https://aerogus.net/posts/radio-dab-welle-cli/
 - https://aerogus.net/posts/enregistrer-multiplex-radio-dab/
 - https://github.com/aerogus/welle-cli
+- https://github.com/AlbrechtL/welle.io
+- https://fr.wikipedia.org/wiki/Bandes_de_fr%C3%A9quences_de_la_t%C3%A9l%C3%A9vision_terrestre

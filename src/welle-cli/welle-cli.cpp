@@ -72,13 +72,13 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
         }
 
         /**
-         * une nouvelle audio frame a été décodée en raw pcm
-         * à 48kHz, correspond à une durée 20ms. si stéréo et 16 bits: 1920 samples: 3840 octets
-         * on l'écrit dans le fichier .pcm
+         * A new audio frame has been decoded to raw pcm
+         * at 48kHz, duration is 20ms. if stereo and 16 bits: 1920 samples: 3840 bytes
+         * we write into the .pcm file
          */
         virtual void onNewAudio(std::vector<int16_t>&& audioData, int sampleRate, const string& mode) override
         {
-            //cout << "[" << hex << SId << dec << "] newAudio reçu - " << audioData.size() << " octets" << endl;
+            //cout << "[" << hex << SId << dec << "] newAudio received - " << audioData.size() << " bytes" << endl;
 
             string filename = filePrefix + ".pcm";
             FILE *file = fopen(filename.c_str(), "ab");
@@ -115,7 +115,7 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
             cout << "[" << std::hex << SId << std::dec << "] " << j << endl;
         }
 
-        // réception d'une image MOT
+        // new MOT picture has been received
         virtual void onMOT(const mot_file_t& mot_file) override
         {
             string extension;
@@ -127,7 +127,7 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
                     extension = "png";
                     break;
                 default:
-                    cerr << "MOT:content_sub_type inconnu" << endl;
+                    cerr << "MOT:content_sub_type unknown" << endl;
                     return;
             }
 
@@ -136,13 +136,13 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
 
             uint32_t current_mot_size = mot_file.data.size();
             if (current_mot_size == last_size) {
-                // détection de doublon par la taille du fichier
-                cout << "[" << std::hex << SId << std::dec << "] MOT BYPASS (doublon " << last_size << " octets)" << endl;
+                // detect duplicate (base on same file size)
+                cout << "[" << std::hex << SId << std::dec << "] MOT BYPASS (duplicate " << last_size << " bytes)" << endl;
                 return;
             }
             last_size = current_mot_size;
 
-            // enregistrement de l'image MOT
+            // write the MOT picture
             string filename_mot = filePrefix + "-" + std::to_string(timestamp) + "." + extension;
             file_mot.open(filename_mot);
             std::stringstream ss;
@@ -152,7 +152,7 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
             file_mot << ss.str();
             file_mot.close();
 
-            // enregistrement des metadata du MOT
+            // write MOT metadata
             string filename_txt = filePrefix + ".ndjson";
             file_txt.open(filename_txt, std::ios_base::app);
 
@@ -177,7 +177,7 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
         }
 
     private:
-        uint32_t last_size = 0; // stocke la taille en octets du dernier MOT
+        uint32_t last_size = 0; // store the last MOT file size in bytes
         uint32_t SId;
         string filePrefix;
 };
@@ -186,7 +186,7 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
 class RadioInterface : public RadioControllerInterface
 {
     public:
-        // rapport signal sur bruit
+        // Signal on Noise Ratio
         virtual void onSNR(float snr) override
         {
             unsigned long int timestamp = time(NULL);
@@ -225,7 +225,7 @@ class RadioInterface : public RadioControllerInterface
             _serviceIdStr << hex << serviceId;
             serviceIdStr = _serviceIdStr.str();
 
-            cout << "Nouveau service détecté: serviceId=" << _serviceIdStr.str() << endl;
+            cout << "New service detected: serviceId=" << _serviceIdStr.str() << endl;
         }
 
         virtual void onNewEnsemble(uint16_t eId) override
@@ -235,7 +235,7 @@ class RadioInterface : public RadioControllerInterface
             _ensembleIdStr << hex << ensembleId;
             ensembleIdStr = _ensembleIdStr.str();
 
-            cout << "Nouvel ensemble: ensembleId=" << _ensembleIdStr.str() << endl;
+            cout << "New ensemble detected: ensembleId=" << _ensembleIdStr.str() << endl;
         }
 
         virtual void onSetEnsembleLabel(DabLabel& label) override
@@ -252,7 +252,7 @@ class RadioInterface : public RadioControllerInterface
             cout << j << endl;
         }
 
-        // le multiplex indique l'heure
+        // an ensemble could send a timestamp
         virtual void onDateTimeUpdate(const dab_date_time_t& dateTime) override
         {
             json j;
@@ -355,7 +355,7 @@ struct options_t {
 options_t parse_cmdline(int argc, char **argv)
 {
     options_t options;
-    options.rro.decodeTII = false; // décodage de localisation de l'émetteur ?
+    options.rro.decodeTII = false; // decode transmitter localisation ?
 
     int opt;
     while ((opt = getopt(argc, argv, "c:o:g:s:u")) != -1) {
@@ -415,12 +415,12 @@ int main(int argc, char **argv)
 
     rx.restart(false);
 
-    cerr << "En attente de synchronisation" << endl;
+    cerr << "Waiting sync" << endl;
     while (not ri.synced) {
         this_thread::sleep_for(chrono::seconds(3));
     }
 
-    cerr << "En attente de la liste des services" << endl;
+    cerr << "Waiting services list" << endl;
     while (rx.getServiceList().empty()) {
         this_thread::sleep_for(chrono::seconds(1));
     }
@@ -431,21 +431,21 @@ int main(int argc, char **argv)
     using SId_t = uint32_t;
     map<SId_t, WavProgrammeHandler> phs;
 
-    cerr << "Liste des services trouvés :" << endl;
-    // boucle des services
+    cerr << "Services found :" << endl;
+
     for (const auto& s : rx.getServiceList()) {
         cerr << "- [" << std::hex << s.serviceId << std::dec << "] " << s.serviceLabel.utf8_label();
 
         std::stringstream sstream;
         sstream << std::hex << s.serviceId;
         string service_id = sstream.str();
-        // conversion en minuscules
+        // lowercase serviceIds
         if (service_id.begin() != service_id.end()) {
             auto it = service_id.begin();
             *it = std::tolower(*it);
         }
 
-        // si filtrage par service
+        // Service filter
         if (!options.services.empty() && std::find(options.services.begin(), options.services.end(), service_id) == options.services.end()) {
             cerr << " (BYPASS)" << endl;
             continue;
@@ -474,14 +474,13 @@ int main(int argc, char **argv)
         ofstream file_txt;
         file_txt.open(filename_txt, std::ios_base::app);
         if (file_txt.is_open()) {
-            cout << "écriture dans " << filename_txt << endl;
+            cout << "write in " << filename_txt << endl;
             file_txt << je << endl;
             file_txt.close();
         } else {
-            cerr << "ERREUR: " << filename_txt << " impossible à ouvrir" << endl;
+            cerr << "ERROR: " << filename_txt << " unable to open" << endl;
         }
 
-        // boucle des composants
         for (const auto& sc : rx.getComponents(s)) {
 
             cerr << " [component "  << sc.componentNr <<
@@ -493,7 +492,7 @@ int main(int argc, char **argv)
 
             json js;
             js["service"] = {
-                {"serviceId", s.serviceId}, // à convertir en hexa
+                {"serviceId", s.serviceId}, // TODO hexa conversion
                 {"serviceLabel", trim(s.serviceLabel.utf8_label())},
                 {"componentNr", sc.componentNr},
                 {"ascty", sc.audioType()},
@@ -508,7 +507,7 @@ int main(int argc, char **argv)
                 file_txt << js << endl;
                 file_txt.close();
             } else {
-                cerr << "ERREUR: " << filename_txt << " impossible à ouvrir" << endl;
+                cerr << "ERROR: " << filename_txt << " unable to open" << endl;
             }
         }
         cerr << endl;
@@ -525,7 +524,7 @@ int main(int argc, char **argv)
 
     // main loop
     while (true) {
-        // ne pas laisser la boucle complètement vide, plante sous MacOS...
+        // don't let the main loop empty. Crash on MacOS...
         cout << "";
     }
 

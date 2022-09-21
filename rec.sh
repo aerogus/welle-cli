@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
 ##
-# captation DAB+ avec welle-cli
+# DAB+ services multiplex recorder with welle-cli
 #
-# canaux actifs à Paris: 5A, 6A, 6C, 6D, 8C, 9A, 9B, 11A, 11B
+# Active blocks in Paris: 5A, 6A, 6C, 6D, 8C, 9A, 9B, 11A, 11B
 ##
 
 declare -r ABS_PATH="$( cd "$(dirname "$0")" || return; pwd -P )"
@@ -18,14 +18,14 @@ echo "- Simu:      $SIMU"
 
 if [[ $CUSTOM_CONF_FILE ]]; then
     if [[ ! -f "$CUSTOM_CONF_FILE" ]]; then
-        echo "- Fichier de configuration personnalisée $CUSTOM_CONF_FILE non trouvé"
+        echo "- Custom configuration file $CUSTOM_CONF_FILE not found"
         exit 1
     else
         echo "- Config:    $CUSTOM_CONF_FILE"
         . "$CUSTOM_CONF_FILE"
     fi
 elif [[ ! -f "$DEFAULT_CONF_FILE" ]]; then
-    echo "- Fichier de configuration par défaut $DEFAULT_CONF_FILE non trouvé"
+    echo "- Default configuration file $DEFAULT_CONF_FILE not found"
     exit 1
 else
     echo "- Config:    $DEFAULT_CONF_FILE"
@@ -34,88 +34,87 @@ fi
 
 if [[ ! -d "$REC_DIR" ]]; then
     if mkdir -p "$REC_DIR" 2>/dev/null; then
-        echo "- Création du répertoire de stockage $REC_DIR"
+        echo "- Create storage directory $REC_DIR"
     else
-        echo "- Erreur à la création du répertoire de stockage $REC_DIR"
+        echo "- Error in create storage directory$REC_DIR"
         exit 1
     fi
 fi
 
-echo "- Stockage:  $REC_DIR"
+echo "- Storage:   $REC_DIR"
 echo "- Block:     $BLOCK"
 echo "- Services:  $SERVICE_IDS"
 
-# en interne, les servicesId sont en minuscules
+# Internally, servicesId are lowercase
 SERVICE_IDS=$(echo "$SERVICE_IDS" | tr '[:upper:]' '[:lower:]')
 SERVICE_IDS_ARRAY=$(echo "$SERVICE_IDS" | tr "," "\n")
 EXTENSIONS=(pcm ndjson)
 
-# Ménage d'anciennes éventuelles de read-pipe.sh
+# Cleanup old instances of read-pipe.sh
 if [[ $SIMU -gt 0 ]]; then
     PREVIOUS_PIDS=$(ps | grep read-pipe.sh | grep -v grep | awk '{print $1}';)
     if [[ "$PREVIOUS_PIDS" ]]; then
-        echo "Termine (SIGTERM) les processus read-pipe.sh suivants : $PREVIOUS_PIDS"
-        kill -15 $PREVIOUS_PIDS
+        echo "Kill (SIGTERM) previous read-pipe.sh process : $PREVIOUS_PIDS"
+        kill -15 "$PREVIOUS_PIDS"
     else
-        echo "aucun processus read-pipe.sh à terminer"
+        echo "no previous read-pipe.sh instances to kill"
     fi
 fi
 
-# Création des tubes nommés pour les services à capter
+# Create named pipes for the selected services to record
 for SERVICE_ID in $SERVICE_IDS_ARRAY
 do
     SERVICE_DIR="${REC_DIR}/${SERVICE_ID}"
     if [[ ! -d "$SERVICE_DIR" ]]; then
-        echo "- création répertoire $SERVICE_DIR"
+        echo "- Create directory $SERVICE_DIR"
         mkdir -p "$SERVICE_DIR"
     fi
 
-    # ménage données .msc (données associées brutes avant décodage)
-    MSC_FILENAME=="${FILE_PREFIX}.msc"
+    # cleanup .msc files (associated raw data)
+    MSC_FILENAME="${FILE_PREFIX}.msc"
     if [[ -f "$MSC_FILENAME" ]]; then
         rm "$MSC_FILENAME"
-        echo "Effacement du fichier .msc $MSC_FILENAME"
+        echo "Remove msc file $MSC_FILENAME"
     fi
 
     FILE_PREFIX="${SERVICE_DIR}/${SERVICE_ID}"
     for EXTENSION in "${EXTENSIONS[@]}"
     do
-        # ne pas effacer le tube nommé tout le temps ...
-        # impossible d'armer à l'avance sinon
+        # do not remove the named pipe everytime ...
+        # impossible to arm otherwise
         FILENAME="${FILE_PREFIX}.${EXTENSION}"
 
         if [[ -f "$FILENAME" ]]; then
              rm "$FILENAME"
-             echo "Effacement du fichier régulier $FILENAME"
+             echo "Delete regular file $FILENAME"
         fi
 
         if [[ ! -p "$FILENAME" ]]; then
-            echo "- Création du tube nommé $FILENAME"
+            echo "- Create named pipe $FILENAME"
             mkfifo "$FILENAME"
         else
-            echo "- Tube nommé $FILENAME déjà existant"
+            echo "- Named pipe $FILENAME already exists"
         fi
 
-        # simulation de lecture des flux (en background)
+        # background stream play simulation
         if [[ $SIMU -gt 0 ]]; then
-            echo "Simulation de lecture du tube nommé $FILENAME"
+            echo "Simulation of reading the named pipe $FILENAME"
             "${ABS_PATH}/read-pipe.sh" "${FILENAME}" &
         fi
     done
 done
 
 if [[ -z "$AUTOSTART" ]] && [[ $SIMU -eq 0 ]]; then
-    echo "Avez vous bien armé les captations pour tous les services demandés ? (o/N)"
+    echo "Did you arm all your recorders for selected services ? (y/N)"
     read -r CONFIRM
-    if [[ $CONFIRM != "O" ]] && [[ $CONFIRM != "o" ]]; then
-        echo "Arrêt"
+    if [[ $CONFIRM != "y" ]] && [[ $CONFIRM != "Y" ]]; then
+        echo "Quit"
         exit 0
     fi
 else
-    echo "Démarrage automatique"
+    echo "Automatic launch"
 fi
 
-echo "- Lancement de welle-cli"
+echo "- welle-cli launch"
 echo "---"
 "$WELLE_CLI_BIN" -c "$BLOCK" -s "$SERVICE_IDS" -o "$REC_DIR" 2>&1
-
