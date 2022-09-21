@@ -162,7 +162,8 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
                 j["motBypass"] = {
                     {"msg", "duplicate"},
                     {"size", last_size},
-                    {"serviceId", serviceIdStr}
+                    {"serviceId", serviceIdStr},
+                    {"ts", timestamp}
                 };
 
                 cout << j << endl;
