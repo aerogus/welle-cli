@@ -59,7 +59,11 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
     public:
         WavProgrammeHandler(uint32_t SId, const std::string& fileprefix) :
             SId(SId),
-            filePrefix(fileprefix) {}
+            filePrefix(fileprefix) {
+            stringstream _serviceIdStr;
+            _serviceIdStr << hex << SId;
+            serviceIdStr = _serviceIdStr.str();
+        }
 
         WavProgrammeHandler(const WavProgrammeHandler& other) = delete;
         WavProgrammeHandler& operator=(const WavProgrammeHandler& other) = delete;
@@ -78,7 +82,16 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
          */
         virtual void onNewAudio(std::vector<int16_t>&& audioData, int sampleRate, const string& mode) override
         {
-            //cout << "[" << hex << SId << dec << "] newAudio received - " << audioData.size() << " bytes" << endl;
+            unsigned long int timestamp = time(NULL);
+            json j;
+
+            j["newAudio"] = {
+                "size", audioData.size(), // in bytes
+                "sampleRate", sampleRate,
+                "ts", timestamp,
+            };
+
+            cout << j << endl;
 
             string filename = filePrefix + ".pcm";
             FILE *file = fopen(filename.c_str(), "ab");
@@ -108,7 +121,7 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
             j["dls"] = {
                 {"value", trim(label)},
                 {"ts", timestamp},
-                {"serviceId", SId}
+                {"serviceId", serviceIdStr}
             };
             file << j << endl;
             file.close();
@@ -196,6 +209,7 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
     private:
         uint32_t last_size = 0; // store the last MOT file size in bytes
         uint32_t SId;
+        string serviceIdStr;
         string filePrefix;
 };
 
