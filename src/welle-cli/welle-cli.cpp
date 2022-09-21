@@ -107,12 +107,13 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
             json j;
             j["dls"] = {
                 {"value", trim(label)},
-                {"ts", timestamp}
+                {"ts", timestamp},
+                {"serviceId", SId}
             };
             file << j << endl;
             file.close();
 
-            cout << "[" << std::hex << SId << std::dec << "] " << j << endl;
+            cout << j << endl;
         }
 
         // new MOT picture has been received
@@ -137,7 +138,14 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
             uint32_t current_mot_size = mot_file.data.size();
             if (current_mot_size == last_size) {
                 // detect duplicate (base on same file size)
-                cout << "[" << std::hex << SId << std::dec << "] MOT BYPASS (duplicate " << last_size << " bytes)" << endl;
+                json j;
+                j["motBypass"] = {
+                    {"msg", "duplicate"},
+                    {"size", last_size},
+                    {"serviceId", SId}
+                };
+
+                cout << j << endl;
                 return;
             }
             last_size = current_mot_size;
@@ -162,18 +170,26 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
                 {"content_name", mot_file.content_name},
                 {"click_through_url", mot_file.click_through_url},
                 {"category_title", mot_file.category_title},
+                {"serviceId", SId},
                 {"ts", timestamp}
             };
             cout << j << endl;
             file_txt << j << endl;
             file_txt.close();
-
-            cout << "[" << std::hex << SId << std::dec << "] " << j << endl;
         }
 
         virtual void onPADLengthError(size_t announced_xpad_len, size_t xpad_len) override
         {
-            cout << "X-PAD length mismatch, expected: " << announced_xpad_len << " got: " << xpad_len << endl;
+            unsigned long int timestamp = time(NULL);
+            json j;
+
+            j["padError"] = {
+                {"msg", "X-PAD length mismatch"},
+                {"expected", announced_xpad_len},
+                {"got", xpad_len}
+            };
+
+            cout << j << endl;
         }
 
     private:
@@ -193,10 +209,10 @@ class RadioInterface : public RadioControllerInterface
             json j;
 
             j["snr"] = {
-                {"ts", timestamp},
                 {"value", snr},
                 {"channel", channel},
-                {"frequency", frequency}
+                {"frequency", frequency},
+                {"ts", timestamp}
             };
 
             if (last_snr != j) {
@@ -220,49 +236,71 @@ class RadioInterface : public RadioControllerInterface
 
         virtual void onServiceDetected(uint32_t sId) override
         {
+            unsigned long int timestamp = time(NULL);
+            json j;
+
             serviceId = sId;
             stringstream _serviceIdStr;
             _serviceIdStr << hex << serviceId;
             serviceIdStr = _serviceIdStr.str();
 
-            cout << "New service detected: serviceId=" << _serviceIdStr.str() << endl;
+            j["newService"] = {
+                {"serviceId", serviceIdStr},
+                {"ts", timestamp}
+            };
+
+            cout << j << endl;
         }
 
         virtual void onNewEnsemble(uint16_t eId) override
         {
+            unsigned long int timestamp = time(NULL);
+            json j;
+
             ensembleId = eId;
             stringstream _ensembleIdStr;
             _ensembleIdStr << hex << ensembleId;
             ensembleIdStr = _ensembleIdStr.str();
 
-            cout << "New ensemble detected: ensembleId=" << _ensembleIdStr.str() << endl;
+            j["newEnsemble"] = {
+                {"ensembleId", ensembleIdStr},
+                {"ts", timestamp}
+            };
+
+            cout << j << endl;
         }
 
         virtual void onSetEnsembleLabel(DabLabel& label) override
         {
+            unsigned long int timestamp = time(NULL);
             ensembleLabel = label.utf8_label();
-
             json j;
+
             j["ensemble"] = {
                 {"channel", channel},
                 {"frequency", frequency},
                 {"ensembleId", ensembleIdStr},
-                {"ensembleLabel", ensembleLabel}
+                {"ensembleLabel", ensembleLabel},
+                {"ts", timestamp}
             };
+
             cout << j << endl;
         }
 
         // an ensemble could send a timestamp
         virtual void onDateTimeUpdate(const dab_date_time_t& dateTime) override
         {
+            unsigned long int timestamp = time(NULL);
             json j;
+
             j["UTCTime"] = {
                 {"year", dateTime.year},
                 {"month", dateTime.month},
                 {"day", dateTime.day},
                 {"hour", dateTime.hour},
                 {"minutes", dateTime.minutes},
-                {"seconds", dateTime.seconds}
+                {"seconds", dateTime.seconds},
+                {"ts", timestamp}
             };
 
             if (last_date_time != j) {
@@ -310,7 +348,9 @@ class RadioInterface : public RadioControllerInterface
 
         virtual void onTIIMeasurement(tii_measurement_t&& m) override
         {
+            unsigned long int timestamp = time(NULL);
             json j;
+
             j["TII"] = {
                 {"channel", channel},
                 {"frequency", frequency},
@@ -318,8 +358,10 @@ class RadioInterface : public RadioControllerInterface
                 {"pattern", m.pattern},
                 {"delay", m.delay_samples},
                 {"delay_km", m.getDelayKm()},
-                {"error", m.error}
+                {"error", m.error},
+                {"ts", timestamp}
             };
+
             cout << j << endl;
         }
 
@@ -462,20 +504,20 @@ int main(int argc, char **argv)
         string filename_txt = dumpFilePrefix + ".ndjson";
         unsigned long int timestamp = time(NULL);
 
-        json je;
-        je["ensemble"] = {
+        json j;
+        j["ensemble"] = {
             {"ensembleId", ri.ensembleIdStr},
             {"ensembleLabel", trim(ri.ensembleLabel)},
             {"channel", options.channel},
             {"frequency", freq},
             {"ts", timestamp}
         };
-        cout << je << endl;
+        cout << j << endl;
         ofstream file_txt;
         file_txt.open(filename_txt, std::ios_base::app);
         if (file_txt.is_open()) {
             cout << "write in " << filename_txt << endl;
-            file_txt << je << endl;
+            file_txt << j << endl;
             file_txt.close();
         } else {
             cerr << "ERROR: " << filename_txt << " unable to open" << endl;
@@ -490,8 +532,8 @@ int main(int argc, char **argv)
             const auto& sub = rx.getSubchannel(sc);
             cerr << " [subch " << sub.subChId << " bitrate:" << sub.bitrate() << " at SAd:" << sub.startAddr << "]";
 
-            json js;
-            js["service"] = {
+            json j;
+            j["service"] = {
                 {"serviceId", s.serviceId}, // TODO hexa conversion
                 {"serviceLabel", trim(s.serviceLabel.utf8_label())},
                 {"componentNr", sc.componentNr},
@@ -501,10 +543,10 @@ int main(int argc, char **argv)
                 {"startAddr", sub.startAddr},
                 {"ts", timestamp}
             };
-            cout << js << endl;
+            cout << j << endl;
             file_txt.open(filename_txt, std::ios_base::app);
             if (file_txt.is_open()) {
-                file_txt << js << endl;
+                file_txt << j << endl;
                 file_txt.close();
             } else {
                 cerr << "ERROR: " << filename_txt << " unable to open" << endl;
