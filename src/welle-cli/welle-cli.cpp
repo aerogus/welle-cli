@@ -516,7 +516,7 @@ int main(int argc, char **argv)
             cerr << " (BYPASS)" << endl;
             continue;
         } else {
-            cerr << " (PROCCESSING)" << endl;
+            cerr << " (PROCESSING)" << endl;
         }
 
         string dumpFilePrefix = options.dump_directory + "/" + sstream.str();
