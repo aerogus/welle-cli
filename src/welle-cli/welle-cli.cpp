@@ -412,7 +412,7 @@ struct options_t {
     vector<string> services;
     string frontend = "auto";
     string frontend_args = "";
-    string dump_directory = "";
+    string dump_directory = ".";
     list<int> tests;
 
     RadioReceiverOptions rro;
