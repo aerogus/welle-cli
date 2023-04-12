@@ -35,6 +35,10 @@
 #include "rtl_sdr.h"
 #endif
 
+#ifdef HAVE_AIRSPY
+#include "airspy_sdr.h"
+#endif
+
 CVirtualInput *CInputFactory::GetDevice(RadioControllerInterface& radioController, const std::string& device)
 {
     CVirtualInput *InputDevice = nullptr;
@@ -68,6 +72,9 @@ CVirtualInput *CInputFactory::GetDevice(RadioControllerInterface &radioControlle
 
     try {
         switch(deviceId) {
+#ifdef HAVE_AIRSPY
+        case CDeviceID::AIRSPY: InputDevice = new CAirspy(radioController); break;
+#endif
 #ifdef HAVE_RTLSDR
         case CDeviceID::RTL_SDR: InputDevice = new CRTL_SDR(radioController); break;
 #endif
@@ -98,6 +105,9 @@ CVirtualInput* CInputFactory::GetAutoDevice(RadioControllerInterface& radioContr
     for (int i = 0; i <= 3; i++) {
         try {
             switch(i) {
+#ifdef HAVE_AIRSPY
+            case 0: inputDevice = new CAirspy(radioController); break;
+#endif
 #ifdef HAVE_RTLSDR
             case 1: inputDevice = new CRTL_SDR(radioController); break;
 #endif
@@ -121,6 +131,11 @@ CVirtualInput* CInputFactory::GetManualDevice(RadioControllerInterface& radioCon
     CVirtualInput *InputDevice = nullptr;
 
     try {
+#ifdef HAVE_AIRSPY
+        if (device == "airspy")
+            InputDevice = new CAirspy(radioController);
+        else
+#endif
 #ifdef HAVE_RTLSDR
         if (device == "rtl_sdr")
             InputDevice = new CRTL_SDR(radioController);
