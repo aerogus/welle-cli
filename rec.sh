@@ -34,7 +34,7 @@ else
 fi
 
 if [[ ! -d "$REC_DIR" ]]; then
-    if mkdir -p "$REC_DIR" 2>/dev/null; then
+    if mkdir -p "$REC_DIR" 2> /dev/null; then
         echo "- Create storage directory $REC_DIR"
     else
         echo "- Error in create storage directory$REC_DIR"
