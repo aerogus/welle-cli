@@ -16,6 +16,9 @@
 #include "various/channels.h"
 #include "libs/json.hpp"
 
+#include <sys/socket.h>
+#include <arpa/inet.h> // inet_addr
+
 using namespace std;
 using namespace nlohmann;
 
@@ -55,6 +58,29 @@ vector<string> split(string s, string delimiter)
     res.push_back(s.substr(pos_start));
     return res;
 }
+
+bool sendPcmToMulticast(char* group, int port, int16_t* data, int size)
+{
+    int fd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (fd < 0) {
+        perror("socket");
+        return false;
+    } else {
+        struct sockaddr_in addr;
+        memset(&addr, 0, sizeof(addr));
+        addr.sin_family = AF_INET;
+        addr.sin_addr.s_addr = inet_addr(group);
+        addr.sin_port = htons(port);
+        int nbytes = sendto(fd, data, size, 0, (struct sockaddr*) &addr, sizeof(addr));
+        if (nbytes < 0) {
+            perror("sendto");
+            return false;
+        }
+        return true;
+    }
+}
+
+// @TODO sendJsonToMulticast(char* group, int port, json data, int size))
 
 class WavProgrammeHandler: public ProgrammeHandlerInterface
 {
@@ -100,10 +126,19 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
                 cout << j << endl;
             }
 
+            // write to file
             string filename = filePrefix + ".pcm";
             FILE *file = fopen(filename.c_str(), "ab");
             fwrite(audioData.data(), sizeof(short), audioData.size(), file);
             fclose(file);
+
+            // send to udp
+            // à variabiliser !
+            /*
+            char* group = "239.0.0.1";
+            int port = 5001;
+            sendPcmToMulticast(group, port, audioData.data(), audioData.size());
+            */
         }
 
         virtual void onRsErrors(bool uncorrectedErrors, int numCorrectedErrors) override
@@ -404,12 +439,24 @@ class RadioInterface : public RadioControllerInterface
 
         string channel = "";
         string frequency = "";
+
+        string group;
+        int portAudio;
+        int portData;
+};
+
+struct service {
+    string id;
+    string group;
+    int audio_port;
+    int data_port;
 };
 
 struct options_t {
     int gain = -1;
     string channel = "5A";
     vector<string> services;
+    vector<service> services2;
     string frontend = "auto";
     string frontend_args = "";
     string dump_directory = ".";
@@ -422,6 +469,8 @@ options_t parse_cmdline(int argc, char **argv)
 {
     options_t options;
     options.rro.decodeTII = false; // decode transmitter localisation ?
+    vector<string> _services;
+    vector<string> _service;
 
     int opt;
     while ((opt = getopt(argc, argv, "c:o:g:s:u")) != -1) {
@@ -436,6 +485,22 @@ options_t parse_cmdline(int argc, char **argv)
                 options.gain = std::atoi(optarg);
                 break;
             case 's':
+                // format: SSSS:I.I.I.I:AAAA:DDDD,SSSS:I.I.I.I:AAAA:DDDD
+                _services = split(optarg, ",");
+                for (int i = 0; i < _services.size(); i++) {
+                    _service = split(_services[i], ":");
+                    // 0: serviceId
+                    // 1: groupe multicast
+                    // 2: audio port
+                    // 3: data port
+                    struct service s = {
+                        .id = _service[0],
+                        .group = _service[1],
+                        .audio_port = atoi(_service[2].c_str()),
+                        .data_port = atoi(_service[3].c_str())
+                    };
+                    options.services2.push_back(s);
+                }
                 options.services = split(optarg, ",");
                 break;
             case 'u':
@@ -453,6 +518,10 @@ options_t parse_cmdline(int argc, char **argv)
 int main(int argc, char **argv)
 {
     auto options = parse_cmdline(argc, argv);
+
+    for (int i = 0; i < options.services2.size(); i++) {
+        std::cout << "id: " << options.services2[i].id << " group: " << options.services2[i].group << std::endl;
+    }
 
     RadioInterface ri;
     Channels channels;
@@ -519,6 +588,14 @@ int main(int argc, char **argv)
             cerr << " (PROCESSING)" << endl;
         }
 
+        // @TODO filtrer les services à capter et setter les propriétés group et ports
+        /*
+        string serviceId = options.services2[i].id;
+        int portAudio = options.services2[i].portAudio;
+        int portData = options.services2[i].portData;
+        string group = options.services2[i].group;
+        */
+
         string dumpFilePrefix = options.dump_directory + "/" + sstream.str();
         mkdir(dumpFilePrefix.c_str(), 0755);
         dumpFilePrefix += "/" + sstream.str();
@@ -579,7 +656,7 @@ int main(int argc, char **argv)
         cerr << endl;
 
         WavProgrammeHandler ph(s.serviceId, dumpFilePrefix);
-        phs.emplace(std::make_pair(s.serviceId, move(ph)));
+        phs.emplace(std::make_pair(s.serviceId, std::move(ph)));
 
         auto dumpFileName = dumpFilePrefix + ".msc";
 
