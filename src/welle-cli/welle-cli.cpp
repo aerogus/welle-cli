@@ -11,6 +11,9 @@
 #include <cstdio>
 #include <cctype>
 #include <unistd.h>
+#ifdef HAVE_SOAPYSDR
+#  include "soapy_sdr.h"
+#endif
 #include "backend/radio-receiver.h"
 #include "input/input_factory.h"
 #include "various/channels.h"
@@ -453,6 +456,8 @@ struct service {
 };
 
 struct options_t {
+    string soapySDRDriverArgs = "";
+    string antenna = "";
     int gain = -1;
     string channel = "5A";
     vector<string> services;
@@ -539,6 +544,16 @@ int main(int argc, char **argv)
     } else {
         in->setGain(options.gain);
     }
+
+#ifdef HAVE_SOAPYSDR
+    if (not options.antenna.empty() and in->getID() == CDeviceID::SOAPYSDR) {
+        dynamic_cast<CSoapySdr*>(in.get())->setDeviceParam(DeviceParam::SoapySDRAntenna, options.antenna);
+    }
+
+    if (not options.soapySDRDriverArgs.empty() and in->getID() == CDeviceID::SOAPYSDR) {
+        dynamic_cast<CSoapySdr*>(in.get())->setDeviceParam(DeviceParam::SoapySDRDriverArgs, options.soapySDRDriverArgs);
+    }
+#endif
 
     auto freq = channels.getFrequency(options.channel);
     in->setFrequency(freq);

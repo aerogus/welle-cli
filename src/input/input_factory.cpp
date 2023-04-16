@@ -39,6 +39,10 @@
 #include "airspy_sdr.h"
 #endif
 
+#ifdef HAVE_SOAPYSDR
+#include "soapy_sdr.h"
+#endif
+
 CVirtualInput *CInputFactory::GetDevice(RadioControllerInterface& radioController, const std::string& device)
 {
     CVirtualInput *InputDevice = nullptr;
@@ -78,6 +82,9 @@ CVirtualInput *CInputFactory::GetDevice(RadioControllerInterface &radioControlle
 #ifdef HAVE_RTLSDR
         case CDeviceID::RTL_SDR: InputDevice = new CRTL_SDR(radioController); break;
 #endif
+#ifdef HAVE_SOAPYSDR
+        case CDeviceID::SOAPYSDR: InputDevice = new CSoapySdr(radioController); break;
+#endif
         default: throw std::runtime_error("unknown device ID " + std::string(__FILE__) +":"+ std::to_string(__LINE__));
         }
     }
@@ -111,6 +118,9 @@ CVirtualInput* CInputFactory::GetAutoDevice(RadioControllerInterface& radioContr
 #ifdef HAVE_RTLSDR
             case 1: inputDevice = new CRTL_SDR(radioController); break;
 #endif
+#ifdef HAVE_SOAPYSDR
+            case 2: inputDevice = new CSoapySdr(radioController); break;
+#endif
             }
         }
         catch (...) {
@@ -139,6 +149,11 @@ CVirtualInput* CInputFactory::GetManualDevice(RadioControllerInterface& radioCon
 #ifdef HAVE_RTLSDR
         if (device == "rtl_sdr")
             InputDevice = new CRTL_SDR(radioController);
+        else
+#endif
+#ifdef HAVE_SOAPYSDR
+        if (device == "soapysdr")
+            InputDevice = new CSoapySdr(radioController);
         else
 #endif
         std::clog << "InputFactory:"

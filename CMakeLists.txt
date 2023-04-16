@@ -13,6 +13,7 @@ option(BUILD_WELLE_CLI "Build welle-cli"                  ON )
 option(PROFILING       "Enable profiling (see README.md)" OFF)
 option(AIRSPY          "Compile with Airspy support"      ON )
 option(RTLSDR          "Compile with RTL-SDR support"     ON )
+option(SOAPYSDR        "Compile with SoapySDR support"    ON )
 
 add_definitions(-Wall)
 add_definitions(-g)
@@ -53,6 +54,12 @@ if (AIRSPY)
     find_package(LibAIRSPY REQUIRED)
 endif()
 
+if (SOAPYSDR)
+    find_package(SoapySDR NO_MODULE REQUIRED)
+    # Note: SoapySDRConfig.cmake sets C++11 standard so it needs to be reset to C++14
+    set(CMAKE_CXX_STANDARD 14)
+endif()
+
 include_directories(
     src
     src/backend
@@ -63,6 +70,7 @@ include_directories(
     ${FFTW3F_INCLUDE_DIRS}
     ${FAAD_INCLUDE_DIRS}
     ${LIBRTLSDR_INCLUDE_DIRS}
+    ${SoapySDR_INCLUDE_DIRS}
 )
 
 set(backend_sources
@@ -116,6 +124,11 @@ if(LIBAIRSPY_FOUND)
     set(input_sources  ${input_sources} src/input/airspy_sdr.cpp)
 endif()
 
+if(SoapySDR_FOUND)
+    add_definitions (-DHAVE_SOAPYSDR)
+    set(input_sources  ${input_sources} src/input/soapy_sdr.cpp)
+endif()
+
 STRING(TIMESTAMP BUILD_DATE "%s" UTC)
 add_definitions("-DBUILD_DATE=\"${BUILD_DATE}\"")
 
@@ -133,6 +146,7 @@ if(BUILD_WELLE_CLI)
       ${LIBAIRSPY_LIBRARIES}
       ${FFTW3F_LIBRARIES}
       ${FAAD_LIBRARIES}
+      ${SoapySDR_LIBRARIES}
       Threads::Threads
     )
 
