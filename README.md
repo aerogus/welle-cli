@@ -113,7 +113,7 @@ In the `conf` directory, create a profile, ex `5A.ini` file with this kind of co
 ```
 REC_DIR="/Users/gus/dab"
 BLOCK="5A"
-SERVICE_IDS="F00D,F00E"
+SERVICES=("F00D:239.0.0.1" "F00E:239.0.0.2")
 ```
 
 `rec.sh` script uses named pipes. `welle-cli` will write into these pipes (2 for each service), but an application has to read these whole pipes at the other side, otherwise there will be a buffer overflow. So you have to arm these readers before launch `welle-cli`.

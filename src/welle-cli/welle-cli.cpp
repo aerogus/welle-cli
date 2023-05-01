@@ -27,7 +27,7 @@ using namespace nlohmann;
 
 const std::string WHITESPACE = " \n\r\t\f\v";
 
-const bool DEBUG = false;
+const bool DEBUG = true;
 
 std::string ltrim(const std::string &s)
 {
@@ -62,38 +62,39 @@ vector<string> split(string s, string delimiter)
     return res;
 }
 
-bool sendPcmToMulticast(char* group, int port, int16_t* data, int size)
+int sendPcmToMulticast(const char* group, int port, int16_t* data, int size, int fd, sockaddr_in addr)
 {
-    int fd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (fd < 0) {
-        perror("socket");
-        return false;
-    } else {
-        struct sockaddr_in addr;
-        memset(&addr, 0, sizeof(addr));
-        addr.sin_family = AF_INET;
-        addr.sin_addr.s_addr = inet_addr(group);
-        addr.sin_port = htons(port);
-        int nbytes = sendto(fd, data, size, 0, (struct sockaddr*) &addr, sizeof(addr));
-        if (nbytes < 0) {
-            perror("sendto");
+    if (fd == 0) {
+        fd = socket(AF_INET, SOCK_DGRAM, 0);
+        if (fd < 0) {
+            perror("socket");
             return false;
         }
-        return true;
     }
-}
 
-// @TODO sendJsonToMulticast(char* group, int port, json data, int size))
+    int nbytes = sendto(fd, data, size, 0, (struct sockaddr*) &addr, sizeof(addr));
+    if (nbytes < 0) {
+        perror("sendto");
+        return false;
+    }
+
+    return fd;
+}
 
 class WavProgrammeHandler: public ProgrammeHandlerInterface
 {
     public:
-        WavProgrammeHandler(uint32_t SId, const std::string& fileprefix) :
+        WavProgrammeHandler(uint32_t SId, const std::string& fileprefix, const char* mcastGroup, int mcastPort) :
             SId(SId),
-            filePrefix(fileprefix) {
+            filePrefix(fileprefix),
+            mcastGroup(mcastGroup),
+            mcastPort(mcastPort) {
             stringstream _serviceIdStr;
             _serviceIdStr << hex << SId;
             serviceIdStr = _serviceIdStr.str();
+            addr.sin_family = AF_INET;
+            addr.sin_addr.s_addr = inet_addr(mcastGroup);
+            addr.sin_port = htons(mcastPort);
         }
 
         WavProgrammeHandler(const WavProgrammeHandler& other) = delete;
@@ -126,7 +127,7 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
 
             // very verbose
             if (DEBUG) {
-                cout << j << endl;
+                //cout << j << endl;
             }
 
             // write to file
@@ -136,12 +137,7 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
             fclose(file);
 
             // send to udp
-            // à variabiliser !
-            /*
-            char* group = "239.0.0.1";
-            int port = 5001;
-            sendPcmToMulticast(group, port, audioData.data(), audioData.size());
-            */
+            fd = sendPcmToMulticast(mcastGroup, mcastPort, audioData.data(), audioData.size(), fd, addr);
         }
 
         virtual void onRsErrors(bool uncorrectedErrors, int numCorrectedErrors) override
@@ -258,6 +254,10 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
         uint32_t SId;
         string serviceIdStr;
         string filePrefix;
+        const char* mcastGroup = "239.0.0.1";
+        int mcastPort = 1234;
+        int fd;
+        struct sockaddr_in addr;
 };
 
 
@@ -450,9 +450,8 @@ class RadioInterface : public RadioControllerInterface
 
 struct service {
     string id;
-    string group;
-    int audio_port;
-    int data_port;
+    const char* mcastGroup;
+    int mcastPort;
 };
 
 struct options_t {
@@ -460,8 +459,7 @@ struct options_t {
     string antenna = "";
     int gain = -1;
     string channel = "5A";
-    vector<string> services;
-    vector<service> services2;
+    vector<service> services;
     string frontend = "auto";
     string frontend_args = "";
     string dump_directory = ".";
@@ -490,23 +488,19 @@ options_t parse_cmdline(int argc, char **argv)
                 options.gain = std::atoi(optarg);
                 break;
             case 's':
-                // format: SSSS:I.I.I.I:AAAA:DDDD,SSSS:I.I.I.I:AAAA:DDDD
+                // format: SSSS:I.I.I.I,SSSS:I.I.I.I
                 _services = split(optarg, ",");
                 for (int i = 0; i < _services.size(); i++) {
                     _service = split(_services[i], ":");
                     // 0: serviceId
                     // 1: groupe multicast
-                    // 2: audio port
-                    // 3: data port
                     struct service s = {
                         .id = _service[0],
-                        .group = _service[1],
-                        .audio_port = atoi(_service[2].c_str()),
-                        .data_port = atoi(_service[3].c_str())
+                        .mcastGroup = "239.0.0.1", // _service[1].c_str(),
+                        .mcastPort = 1234,
                     };
-                    options.services2.push_back(s);
+                    options.services.push_back(s);
                 }
-                options.services = split(optarg, ",");
                 break;
             case 'u':
                 options.rro.disableCoarseCorrector = true;
@@ -524,8 +518,8 @@ int main(int argc, char **argv)
 {
     auto options = parse_cmdline(argc, argv);
 
-    for (int i = 0; i < options.services2.size(); i++) {
-        std::cout << "id: " << options.services2[i].id << " group: " << options.services2[i].group << std::endl;
+    for (int i = 0; i < options.services.size(); i++) {
+        std::cout << "id: " << options.services[i].id << ", mcastGroup: " << options.services[i].mcastGroup << ", mcastPort: " << options.services[i].mcastPort << std::endl;
     }
 
     RadioInterface ri;
@@ -595,21 +589,22 @@ int main(int argc, char **argv)
             *it = std::tolower(*it);
         }
 
-        // Service filter
-        if (!options.services.empty() && std::find(options.services.begin(), options.services.end(), service_id) == options.services.end()) {
+        // service filter
+        bool bypass = true;
+        unsigned int idx; // index du options.services à traiter
+        for (idx = 0; idx < options.services.size(); idx++) {
+            if (options.services[idx].id == service_id) {
+                bypass = false;
+                break;
+            }
+        }
+
+        if (bypass) {
             cerr << " (BYPASS)" << endl;
             continue;
         } else {
-            cerr << " (PROCESSING)" << endl;
+            cerr << " (PROCESSING) idx " << idx << endl;
         }
-
-        // @TODO filtrer les services à capter et setter les propriétés group et ports
-        /*
-        string serviceId = options.services2[i].id;
-        int portAudio = options.services2[i].portAudio;
-        int portData = options.services2[i].portData;
-        string group = options.services2[i].group;
-        */
 
         string dumpFilePrefix = options.dump_directory + "/" + sstream.str();
         mkdir(dumpFilePrefix.c_str(), 0755);
@@ -670,7 +665,9 @@ int main(int argc, char **argv)
         }
         cerr << endl;
 
-        WavProgrammeHandler ph(s.serviceId, dumpFilePrefix);
+        //cout << options.services[idx].mcastGroup << options.services[idx].mcastPort << endl;
+
+        WavProgrammeHandler ph(s.serviceId, dumpFilePrefix, options.services[idx].mcastGroup, options.services[idx].mcastPort);
         phs.emplace(std::make_pair(s.serviceId, std::move(ph)));
 
         auto dumpFileName = dumpFilePrefix + ".msc";
