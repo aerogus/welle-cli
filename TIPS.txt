@@ -1,0 +1,12 @@
+Open udp pcm stream with VLC :
+
+```bash
+vlc udp://@239.0.0.1:1234 :demux=rawaud :rawaud-fourcc=s16l :rawaud-channels=2 :rawaud-samplerate=48000
+```
+
+Restrict multicast to local loop with MacOS :
+
+```bash
+sudo route add 239.0.0.0/24 127.0.0.1
+```
+

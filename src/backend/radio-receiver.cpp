@@ -136,6 +136,7 @@ bool RadioReceiver::removeServiceToDecode(const Service& s)
         if (sc.transportMode() == TransportMode::Audio) {
             const auto& subch = ficHandler.fibProcessor.getSubchannel(sc);
             if (subch.valid()) {
+                // REMOVE SUBCHANNEL CONSUMMER ?
                 return mscHandler.removeSubchannel(subch);
             }
         }
@@ -159,6 +160,7 @@ bool RadioReceiver::playProgramme(ProgrammeHandlerInterface& handler,
                 if (sc.audioType() == AudioServiceComponentType::DABPlus) {
                     mscHandler.addSubchannel(
                             handler, sc.audioType(), dumpFileName, subch);
+                    // ADD SUBCHANNEL CONSUMER ?
                     return true;
                 }
             }

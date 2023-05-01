@@ -15,6 +15,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include <iostream>
 
 #include "dabplus_decoder.h"
 
@@ -135,6 +136,15 @@ void SuperframeFilter::Feed(const uint8_t *data, size_t len) {
 			aac_dec->DecodeFrame(au_data, au_len);
 		CheckForPAD(au_data, au_len);
 		ProcessUntouchedStream(au_data, au_len);
+
+		/*
+		std::cerr << "PROCESS, au_len=" << au_len << std::endl;
+
+		std::string filename = "/Users/lagune/test.aac";
+        FILE *file = fopen(filename.c_str(), "ab");
+        fwrite(au_data, sizeof(short), au_len, file);
+        fclose(file);
+		*/
 	}
 
 	// ensure getting a complete new Superframe
@@ -309,6 +319,7 @@ void SuperframeFilter::ProcessUntouchedStream(const uint8_t *data, size_t len) {
 
 	const std::vector<uint8_t> latm_data = au_bw.GetData();
 	ForwardUntouchedStream(&latm_data[0], latm_data.size(), sf_format.GetAULengthMs());
+
 }
 
 
@@ -459,6 +470,15 @@ void AACDecoderFAAD2::DecodeFrame(uint8_t *data, size_t len) {
 
 	if(dec_frameinfo.bytesconsumed != len)
 		throw std::runtime_error("AACDecoderFAAD2: NeAACDecDecode did not consume all bytes");
+
+	std::cerr << "DecodeFrame: len=" << len << std::endl;
+
+/*
+    std::string filename = "/Users/lagune/test.aac";
+    FILE *file = fopen(filename.c_str(), "ab");
+    fwrite(data, sizeof(short), len, file);
+    fclose(file);
+*/
 
 	observer->PutAudio(output_frame, dec_frameinfo.samples * (float32 ? 4 : 2));
 }

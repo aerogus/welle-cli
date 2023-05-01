@@ -62,20 +62,26 @@ vector<string> split(string s, string delimiter)
     return res;
 }
 
-int sendPcmToMulticast(const char* group, int port, int16_t* data, int size, int fd, sockaddr_in addr)
+int sendPcmToMulticast(const char* group, int port, int16_t* data, int size, int fd, sockaddr_in addr, int frame)
 {
     if (fd == 0) {
+        cout << "creation socket" << endl;
         fd = socket(AF_INET, SOCK_DGRAM, 0);
         if (fd < 0) {
             perror("socket");
             return false;
+        } else {
+            cout << "socket créée " << fd << endl;
         }
     }
 
     int nbytes = sendto(fd, data, size, 0, (struct sockaddr*) &addr, sizeof(addr));
     if (nbytes < 0) {
+        cout << "udp error" << endl;
         perror("sendto");
         return false;
+    } else {
+        cout << "udp frame: " << frame << " nbytes: " << nbytes << endl;
     }
 
     return fd;
@@ -92,6 +98,8 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
             stringstream _serviceIdStr;
             _serviceIdStr << hex << SId;
             serviceIdStr = _serviceIdStr.str();
+
+            memset(&addr, 0, sizeof(addr));
             addr.sin_family = AF_INET;
             addr.sin_addr.s_addr = inet_addr(mcastGroup);
             addr.sin_port = htons(mcastPort);
@@ -122,12 +130,13 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
                 "sampleRate", sampleRate,
                 "mode", mode,
                 "serviceId", serviceIdStr,
-                "ts", timestamp
+                "ts", timestamp,
+                "frame", frame
             };
 
             // very verbose
             if (DEBUG) {
-                //cout << j << endl;
+                cout << j << endl;
             }
 
             // write to file
@@ -137,7 +146,8 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
             fclose(file);
 
             // send to udp
-            fd = sendPcmToMulticast(mcastGroup, mcastPort, audioData.data(), audioData.size(), fd, addr);
+            fd = sendPcmToMulticast(mcastGroup, mcastPort, audioData.data(), audioData.size(), fd, addr, frame);
+            frame++;
         }
 
         virtual void onRsErrors(bool uncorrectedErrors, int numCorrectedErrors) override
@@ -256,8 +266,9 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
         string filePrefix;
         const char* mcastGroup = "239.0.0.1";
         int mcastPort = 1234;
-        int fd;
+        int fd = 0;
         struct sockaddr_in addr;
+        int frame = 0;
 };
 
 
