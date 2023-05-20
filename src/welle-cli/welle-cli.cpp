@@ -62,9 +62,13 @@ vector<string> split(string s, string delimiter)
     return res;
 }
 
-int sendPcmToMulticast(const char* group, int port, int16_t* data, int size, int fd, sockaddr_in addr, int frame)
+//int sendPcmToMulticast(std::vector<int16_t>&&/*int16_t**/ data, int size, int fd, sockaddr_in addr)
+int sendPcmToMulticast(std::vector<int16_t> data, int _fd, sockaddr_in addr)
 {
-    if (fd == 0) {
+    //printf("%d, %x\n", data.size(), data.data());
+    int fd;
+
+    //if (fd == 0) {
         cout << "creation socket" << endl;
         fd = socket(AF_INET, SOCK_DGRAM, 0);
         if (fd < 0) {
@@ -73,16 +77,31 @@ int sendPcmToMulticast(const char* group, int port, int16_t* data, int size, int
         } else {
             cout << "socket créée " << fd << endl;
         }
+        /*
+        if (bind(fd, (sockaddr*)&addr, sizeof(addr)) < 0) {
+            perror("connection error");
+            return 1;
+        }
+        */
+    //}
+
+    // split en nbParts éléments de partSize octets
+    const int partSize = 1280; // 3 paquets UDP par onNewAudio
+
+    for (size_t i = 0; i < data.size(); i += partSize) {
+        auto last = std::min(data.size(), i + partSize);
+        std::vector<int16_t> chunk(data.begin() + i, data.begin() + last);
+        int nbytes = sendto(fd, chunk.data(), chunk.size(), 0, (struct sockaddr*) &addr, sizeof(addr));
+        if (nbytes < 0) {
+            cout << "udp error: " << errno << endl;
+            perror("sendto");
+            return false;
+        } else {
+            //cout << "udp packet sent with " << nbytes << " bytes" << endl;
+        }
     }
 
-    int nbytes = sendto(fd, data, size, 0, (struct sockaddr*) &addr, sizeof(addr));
-    if (nbytes < 0) {
-        cout << "udp error" << endl;
-        perror("sendto");
-        return false;
-    } else {
-        cout << "udp frame: " << frame << " nbytes: " << nbytes << endl;
-    }
+    close(fd);
 
     return fd;
 }
@@ -92,9 +111,7 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
     public:
         WavProgrammeHandler(uint32_t SId, const std::string& fileprefix, const char* mcastGroup, int mcastPort) :
             SId(SId),
-            filePrefix(fileprefix),
-            mcastGroup(mcastGroup),
-            mcastPort(mcastPort) {
+            filePrefix(fileprefix) {
             stringstream _serviceIdStr;
             _serviceIdStr << hex << SId;
             serviceIdStr = _serviceIdStr.str();
@@ -130,24 +147,33 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
                 "sampleRate", sampleRate,
                 "mode", mode,
                 "serviceId", serviceIdStr,
-                "ts", timestamp,
-                "frame", frame
+                "ts", timestamp
             };
 
             // very verbose
             if (DEBUG) {
-                cout << j << endl;
+                //cout << j << endl;
             }
 
-            // write to file
+            if (audioData.size() == 0) {
+                cout << "audioData vide" << endl;
+                //return;
+            }
+
+            fd = sendPcmToMulticast(audioData, fd, addr);
+
+            // write to file (marche bien)
             string filename = filePrefix + ".pcm";
             FILE *file = fopen(filename.c_str(), "ab");
+            cout << "fwrite " << audioData.size() << " bytes to " << filename << endl;
             fwrite(audioData.data(), sizeof(short), audioData.size(), file);
             fclose(file);
 
-            // send to udp
-            fd = sendPcmToMulticast(mcastGroup, mcastPort, audioData.data(), audioData.size(), fd, addr, frame);
-            frame++;
+            // envoi sur le réseau (marche mal)
+            //cout << "audioData.size() = " << audioData.size() << /*", nbParts = " << nbParts << */endl;
+            //fd = sendPcmToMulticast(audioData, fd, addr);
+            //cout << "send to udp " << audioData.size() << " bytes" << endl;
+            //return;
         }
 
         virtual void onRsErrors(bool uncorrectedErrors, int numCorrectedErrors) override
@@ -200,12 +226,12 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
             unsigned long int timestamp = time(NULL);
 
             uint32_t current_mot_size = mot_file.data.size();
-            if (current_mot_size == last_size) {
+            if (current_mot_size == last_mot_size) {
                 // detect duplicate (base on same file size)
                 json j;
                 j["motBypass"] = {
                     {"msg", "duplicate"},
-                    {"size", last_size},
+                    {"size", last_mot_size},
                     {"serviceId", serviceIdStr},
                     {"ts", timestamp}
                 };
@@ -213,7 +239,7 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
                 cout << j << endl;
                 return;
             }
-            last_size = current_mot_size;
+            last_mot_size = current_mot_size;
 
             // write the MOT picture
             string filename_mot = filePrefix + "-" + std::to_string(timestamp) + "." + extension;
@@ -260,17 +286,13 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
         }
 
     private:
-        uint32_t last_size = 0; // store the last MOT file size in bytes
+        uint32_t last_mot_size = 0; // store the last MOT file size in bytes
         uint32_t SId;
         string serviceIdStr;
         string filePrefix;
-        const char* mcastGroup = "239.0.0.1";
-        int mcastPort = 1234;
         int fd = 0;
         struct sockaddr_in addr;
-        int frame = 0;
 };
-
 
 class RadioInterface : public RadioControllerInterface
 {
@@ -461,7 +483,7 @@ class RadioInterface : public RadioControllerInterface
 
 struct service {
     string id;
-    const char* mcastGroup;
+    string mcastGroup;
     int mcastPort;
 };
 
@@ -501,15 +523,16 @@ options_t parse_cmdline(int argc, char **argv)
             case 's':
                 // format: SSSS:I.I.I.I,SSSS:I.I.I.I
                 _services = split(optarg, ",");
-                for (int i = 0; i < _services.size(); i++) {
+                for (unsigned long i = 0; i < _services.size(); i++) {
                     _service = split(_services[i], ":");
                     // 0: serviceId
                     // 1: groupe multicast
                     struct service s = {
                         .id = _service[0],
-                        .mcastGroup = "239.0.0.1", // _service[1].c_str(),
+                        .mcastGroup = _service[1]/*.c_str()*/,
                         .mcastPort = 1234,
                     };
+                    std::transform(s.id.begin(), s.id.end(), s.id.begin(), [](unsigned char c) { return std::tolower(c); });
                     options.services.push_back(s);
                 }
                 break;
@@ -529,7 +552,7 @@ int main(int argc, char **argv)
 {
     auto options = parse_cmdline(argc, argv);
 
-    for (int i = 0; i < options.services.size(); i++) {
+    for (unsigned long i = 0; i < options.services.size(); i++) {
         std::cout << "id: " << options.services[i].id << ", mcastGroup: " << options.services[i].mcastGroup << ", mcastPort: " << options.services[i].mcastPort << std::endl;
     }
 
@@ -676,9 +699,9 @@ int main(int argc, char **argv)
         }
         cerr << endl;
 
-        //cout << options.services[idx].mcastGroup << options.services[idx].mcastPort << endl;
+        cout << options.services[idx].mcastGroup << options.services[idx].mcastPort << endl;
 
-        WavProgrammeHandler ph(s.serviceId, dumpFilePrefix, options.services[idx].mcastGroup, options.services[idx].mcastPort);
+        WavProgrammeHandler ph(s.serviceId, dumpFilePrefix, options.services[idx].mcastGroup.c_str(), options.services[idx].mcastPort);
         phs.emplace(std::make_pair(s.serviceId, std::move(ph)));
 
         auto dumpFileName = dumpFilePrefix + ".msc";

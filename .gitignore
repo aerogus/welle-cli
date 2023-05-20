@@ -19,3 +19,4 @@ conf/*.ini
 !conf/default.dist.ini
 welle-cli*.log
 log
+rec

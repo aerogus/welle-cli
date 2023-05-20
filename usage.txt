@@ -1,0 +1,32 @@
+# Guide rapide
+
+pour lire flux audio pcm multicast (bug pour l'instant):
+
+```bash
+ffplay  -f s16le -ac 2 -ar 48000 -i udp://239.0.92.1:1234
+```
+
+pour lire le flux des métadonnées (dls + mot + autres)
+
+```bash
+à faire
+```
+
+Analyse réseau
+
+```bash
+tshark -i en0 -c 1 -V -f "host 239.0.92.1"
+```
+
+multicast limité à la boucle locale
+
+```bash
+sudo route add 239.0.0.0/8 127.0.0.1
+sudo route delete 239.0.0.0/8 127.0.0.1
+```
+
+check routage
+
+```
+netstat -nr -f inet | grep 239.0.0
+```
