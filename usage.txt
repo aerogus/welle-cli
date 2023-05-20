@@ -15,7 +15,7 @@ pour lire le flux des métadonnées (dls + mot + autres)
 Analyse réseau
 
 ```bash
-tshark -i en0 -c 1 -V -f "host 239.0.92.1"
+tshark -i en0 -c 1 -V -f "host 239.0.92.1 and port 1234"
 ```
 
 multicast limité à la boucle locale
@@ -30,3 +30,16 @@ check routage
 ```
 netstat -nr -f inet | grep 239.0.0
 ```
+
+socat UDP4-RECVFROM:1235,ip-add-membership=239.0.92.1:0.0.0.0,fork - | hexdump -Cv
+
+% socat UDP4-RECVFROM:1235,ip-add-membership=239.0.92.1:0.0.0.0,fork -
+{"dls":{"serviceId":"fee5","ts":1684589956,"value":"Dick Dale & His Del-Tones - Misirlou, 1962 (From \"Pulp Fiction\", 1994)"}}
+
+retour à la ligne ? tester avec boucle whild !feof()
+
+
+crash :
+libc++abi: terminating due to uncaught exception of type nlohmann::detail::type_error: [json.exception.type_error.316] invalid UTF-8 byte at index 32: 0x20
+libc++abi: terminating due to uncaught exception of type nlohmann::detail::type_error: [json.exception.type_error.316] invalid UTF-8 byte at index 32: 0x20
+

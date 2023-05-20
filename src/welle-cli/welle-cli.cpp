@@ -62,6 +62,32 @@ vector<string> split(string s, string delimiter)
     return res;
 }
 
+int sendJsonToMulticast(json& json, int fd, sockaddr_in addr)
+{
+    if (fd == 0) {
+        cout << "creation socket" << endl;
+        fd = socket(AF_INET, SOCK_DGRAM, 0);
+        if (fd < 0) {
+            perror("socket");
+            return false;
+        } else {
+            cout << "socket créée " << fd << endl;
+        }
+    }
+
+    string json_str = json.dump() + "\n";
+    int nbytes = sendto(fd, json_str.c_str(), json_str.size(), 0, (struct sockaddr*) &addr, sizeof(addr));
+    if (nbytes < 0) {
+        cout << "udp error: " << errno << endl;
+        perror("sendto");
+        return false;
+    } else {
+        //cout << "udp packet sent with " << nbytes << " bytes" << endl;
+    }
+
+    return fd;
+}
+
 int sendPcmToMulticast(std::vector<int16_t>& data, int fd, sockaddr_in addr)
 {
     if (fd == 0) {
@@ -108,6 +134,11 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
             addr.sin_family = AF_INET;
             addr.sin_addr.s_addr = inet_addr(mcastGroup);
             addr.sin_port = htons(mcastPort);
+
+            memset(&addr2, 0, sizeof(addr2));
+            addr2.sin_family = AF_INET;
+            addr2.sin_addr.s_addr = inet_addr(mcastGroup);
+            addr2.sin_port = htons(mcastPort + 1);
         }
 
         WavProgrammeHandler(const WavProgrammeHandler& other) = delete;
@@ -184,6 +215,8 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
             file.close();
 
             cout << j << endl;
+
+            fd2 = sendJsonToMulticast(j, fd2, addr2);
         }
 
         // new MOT picture has been received
@@ -217,6 +250,7 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
                 };
 
                 cout << j << endl;
+                fd2 = sendJsonToMulticast(j, fd2, addr2);
                 return;
             }
             last_mot_size = current_mot_size;
@@ -247,6 +281,7 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
             cout << j << endl;
             file_txt << j << endl;
             file_txt.close();
+            fd2 = sendJsonToMulticast(j, fd2, addr2);
         }
 
         virtual void onPADLengthError(size_t announced_xpad_len, size_t xpad_len) override
@@ -263,6 +298,7 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
             };
 
             cout << j << endl;
+            fd2 = sendJsonToMulticast(j, fd2, addr2);
         }
 
     private:
@@ -270,8 +306,10 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
         uint32_t SId;
         string serviceIdStr;
         string filePrefix;
-        int fd = 0;
-        struct sockaddr_in addr;
+        int fd = 0; // pcm
+        int fd2 = 0; // metadata
+        struct sockaddr_in addr; // pcm
+        struct sockaddr_in addr2; // metadata
 };
 
 class RadioInterface : public RadioControllerInterface
