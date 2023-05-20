@@ -471,7 +471,7 @@ void AACDecoderFAAD2::DecodeFrame(uint8_t *data, size_t len) {
 	if(dec_frameinfo.bytesconsumed != len)
 		throw std::runtime_error("AACDecoderFAAD2: NeAACDecDecode did not consume all bytes");
 
-	std::cerr << "DecodeFrame: len=" << len << std::endl;
+	//std::cerr << "DecodeFrame: len=" << len << std::endl;
 
 /*
     std::string filename = "/Users/lagune/test.aac";

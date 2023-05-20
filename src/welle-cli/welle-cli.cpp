@@ -62,13 +62,9 @@ vector<string> split(string s, string delimiter)
     return res;
 }
 
-//int sendPcmToMulticast(std::vector<int16_t>&&/*int16_t**/ data, int size, int fd, sockaddr_in addr)
-int sendPcmToMulticast(std::vector<int16_t> data, int _fd, sockaddr_in addr)
+int sendPcmToMulticast(std::vector<int16_t>& data, int fd, sockaddr_in addr)
 {
-    //printf("%d, %x\n", data.size(), data.data());
-    int fd;
-
-    //if (fd == 0) {
+    if (fd == 0) {
         cout << "creation socket" << endl;
         fd = socket(AF_INET, SOCK_DGRAM, 0);
         if (fd < 0) {
@@ -77,13 +73,7 @@ int sendPcmToMulticast(std::vector<int16_t> data, int _fd, sockaddr_in addr)
         } else {
             cout << "socket créée " << fd << endl;
         }
-        /*
-        if (bind(fd, (sockaddr*)&addr, sizeof(addr)) < 0) {
-            perror("connection error");
-            return 1;
-        }
-        */
-    //}
+    }
 
     // split en nbParts éléments de partSize octets
     const int partSize = 1280; // 3 paquets UDP par onNewAudio
@@ -91,7 +81,7 @@ int sendPcmToMulticast(std::vector<int16_t> data, int _fd, sockaddr_in addr)
     for (size_t i = 0; i < data.size(); i += partSize) {
         auto last = std::min(data.size(), i + partSize);
         std::vector<int16_t> chunk(data.begin() + i, data.begin() + last);
-        int nbytes = sendto(fd, chunk.data(), chunk.size(), 0, (struct sockaddr*) &addr, sizeof(addr));
+        int nbytes = sendto(fd, chunk.data(), chunk.size() * sizeof(uint16_t), 0, (struct sockaddr*) &addr, sizeof(addr));
         if (nbytes < 0) {
             cout << "udp error: " << errno << endl;
             perror("sendto");
@@ -100,8 +90,6 @@ int sendPcmToMulticast(std::vector<int16_t> data, int _fd, sockaddr_in addr)
             //cout << "udp packet sent with " << nbytes << " bytes" << endl;
         }
     }
-
-    close(fd);
 
     return fd;
 }
@@ -150,30 +138,22 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface
                 "ts", timestamp
             };
 
-            // very verbose
-            if (DEBUG) {
-                //cout << j << endl;
-            }
-
             if (audioData.size() == 0) {
                 cout << "audioData vide" << endl;
-                //return;
+                return;
             }
 
+            // sent to udp multicast
             fd = sendPcmToMulticast(audioData, fd, addr);
 
-            // write to file (marche bien)
+            // write to file
+            /*
             string filename = filePrefix + ".pcm";
             FILE *file = fopen(filename.c_str(), "ab");
             cout << "fwrite " << audioData.size() << " bytes to " << filename << endl;
             fwrite(audioData.data(), sizeof(short), audioData.size(), file);
             fclose(file);
-
-            // envoi sur le réseau (marche mal)
-            //cout << "audioData.size() = " << audioData.size() << /*", nbParts = " << nbParts << */endl;
-            //fd = sendPcmToMulticast(audioData, fd, addr);
-            //cout << "send to udp " << audioData.size() << " bytes" << endl;
-            //return;
+            */
         }
 
         virtual void onRsErrors(bool uncorrectedErrors, int numCorrectedErrors) override
